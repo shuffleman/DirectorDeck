@@ -10,6 +10,7 @@ import hashlib
 import json
 
 from ..core import frames
+from ..core import seam
 from ..core.types import CATEGORY, FPS, TYPE_CONFIG
 
 # 种子策略：
@@ -59,6 +60,18 @@ class DirectorDeckConfig:
                 "preview": ("BOOLEAN", {"default": True}),
                 "vram_policy": (VRAM_POLICIES, {"default": "release"}),
                 "cleanup_segments": (CLEANUP_MODES, {"default": "ask"}),
+                # ---- 接缝修正（M2）----
+                # 只修“交付帧”，不碰衔接头；窗口/上下限都能调，方便不同题材微调。
+                "seam_enabled": ("BOOLEAN", {"default": True,
+                                             "tooltip": "是否自动修正段间曝光/亮度跳变"}),
+                "seam_window": ("INT", {"default": seam.WINDOW_DEFAULT, "min": 2, "max": 48,
+                                        "tooltip": "参与比较的帧数"}),
+                "seam_max_add": ("FLOAT", {"default": seam.MAX_ADD_DEFAULT, "min": 0.0,
+                                           "max": 0.5, "step": 0.01,
+                                           "tooltip": "允许的亮度偏移上限"}),
+                "seam_gain_limit": ("FLOAT", {"default": seam.GAIN_LIMIT_DEFAULT, "min": 0.0,
+                                              "max": 0.2, "step": 0.005,
+                                              "tooltip": "允许的增益偏差上限"}),
             },
             "optional": {
                 "output_dir": ("STRING", {"default": "DirectorDeck"}),
@@ -74,7 +87,9 @@ class DirectorDeckConfig:
     def build(self, width, height, segment_seconds, handoff_frames, sampler_name,
               scheduler, steps, denoise, sigmas_string, interpolate_to_steps,
               seed_strategy, seed_base, preview, vram_policy, cleanup_segments,
-              output_dir="DirectorDeck"):
+              output_dir="DirectorDeck", seam_enabled=True,
+              seam_window=seam.WINDOW_DEFAULT, seam_max_add=seam.MAX_ADD_DEFAULT,
+              seam_gain_limit=seam.GAIN_LIMIT_DEFAULT):
         # 画布硬约束先拦住：不是 32 倍数直接报错，别等模型加载完才炸。
         frames.validate_canvas(width, height)
         config = {
@@ -97,5 +112,9 @@ class DirectorDeckConfig:
             "vram_policy": str(vram_policy),
             "cleanup_segments": str(cleanup_segments),
             "output_dir": str(output_dir or "DirectorDeck"),
+            "seam_enabled": bool(seam_enabled),
+            "seam_window": int(seam_window),
+            "seam_max_add": float(seam_max_add),
+            "seam_gain_limit": float(seam_gain_limit),
         }
         return (config,)

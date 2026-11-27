@@ -164,13 +164,20 @@
   "index": 1, "chain_key": "sha1:...",
   "resolved": { "assets": {...}, "brief": {...}, "cast": {...}, "config": {...}, "bundle_id": "...",
                 "continuity": "start|guide_tail|none" },
-  "frames": 124, "head": 0, "delivery": 124,
+  "frames": 124, "head": 0, "delivery": 124, "sample": 124,
   "images": "<IMAGE socket 附带>", "audio": "<AUDIO socket 附带>",
   "video_path": "DirectorDeck/xxx/seg_001.mp4",
   "seed": 12345, "elapsed_s": 200.3,
+  "store_key": "运行期仓库 key（尾帧/尾音/素材快照，进程内存）",
+  "guide": {"used": true, "head": 22, "audio": true},
+  "seam": {"apply": true, "gain": 1.01, "offset": 0.004, "lowfreq": 0.003, "hard_cut": false},
   "tail": {"kind": "rgb", "frames": 22}
 }
 ```
+
+> **运行期数据（M2）**：segment 里不能存张量（JSON 序列化会崩），所以尾帧/尾音/素材张量
+> 放在进程内 `segment_store`，segment 只带 `store_key`。ComfyUI 重启后旧 key 失效，
+> 生成器会报 `DD-E008` 让用户重跑上一段（而不是悄悄生成接不上的片段）。
 
 ### 2.10 `DIRECTOR_MANIFEST`（schema 1）
 
@@ -302,13 +309,13 @@ segment_fingerprint = sha1(canonical_json({
 | 4 | `DirectorDeck_ScriptDesk` | SCRIPT | text、mode、default_seconds、max_segments、keep_header |
 | 5 | `DirectorDeck_SegmentBrief` | BRIEF | text、seconds、dialogue（多行）、refs |
 | 6 | `DirectorDeck_VoiceLock` | CAST | roles（JSON/多行）、lock_audio、audio_1..3 |
-| 7 | `DirectorDeck_FramePlanner` | PLAN | script/brief、config、handoff、keep_full |
-| 8 | `DirectorDeck_ContinuityGuide` | CONDITIONING/IMAGE | prev segment、mode(latent/rgb)、handoff |
-| 9 | `DirectorDeck_DirectorTake` | SEGMENT | bundle_policy、bundle、config_policy、config_override、assets_policy、assets、brief_policy、brief、cast_policy、cast、continuity、chain_key、seed、preview + optional: previous_segment |
-| 10 | `DirectorDeck_SeamFixer` | SEGMENT/IMAGE | prev/cur segment、window、hard-cut 阈值、enabled |
-| 11 | `DirectorDeck_SegmentCache` | SEGMENT | segment、scope、index、mode(cache/reroll) |
+| 7 | `DirectorDeck_FramePlanner` | PLAN + STRING | script、config、keep_full（可选） |
+| 8 | `DirectorDeck_ContinuityGuide` | CONDITIONING/IMAGE | **M2 已并入 DirectorTake**：`continuity=guide_tail` + `previous_segment` 即自动取尾帧/尾音做 AddGuide；独立节点等 M3 latent 续写再做 |
+| 9 | `DirectorDeck_DirectorTake` | SEGMENT + IMAGE + AUDIO | bundle_policy、bundle、config_policy、assets_policy、assets、brief_policy、brief、cast_policy、continuity、segment_index、seed + optional: previous_segment |
+| 10 | `DirectorDeck_SeamFixer` | IMAGE + STRING | prev_images、cur_images、cur_head + optional: enabled、window、max_add、gain_limit |
+| 11 | `DirectorDeck_SegmentCache` | SEGMENT + STRING | segment、mode(status/store/clear)、scope（可选） |
 | 12 | `DirectorDeck_Refiner`（M3） | SEGMENT | segment、mode(upscale/latent-2nd)、engine、denoise/steps、windows |
-| 13 | `DirectorDeck_FinalCut` | VIDEO+MANIFEST | segments（顺序槽或 autogrow）、seam、audio、filename、cleanup |
+| 13 | `DirectorDeck_FinalCut` | IMAGE + AUDIO + MANIFEST | segment_1/images_1/audio_1（必填）+ segment_2..4/images_2..4/audio_2..4（可选） |
 | 14 | `DirectorDeck_OutputLibrary`（可选） | path+FILE | segment/manifest、dir、naming |
 | 15 | `DirectorDeck_PromptSmith`（可选） | STRING | template/task、remote provider（默认关） |
 | 16 | `DirectorDeck_DirectorRunner`（M4，可选） | ALL | plan/config、run_mode |

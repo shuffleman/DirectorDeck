@@ -8,9 +8,13 @@
 """
 
 from .brief import DirectorDeckSegmentBrief
+from .cache import DirectorDeckSegmentCache
 from .config import DirectorDeckConfig
+from .final_cut import DirectorDeckFinalCut
 from .loader import DirectorDeckModelLoader
+from .planner import DirectorDeckFramePlanner
 from .script_node import DirectorDeckScriptDesk
+from .seam_fixer import DirectorDeckSeamFixer
 from .shelf import DirectorDeckAssetShelf
 from .take import DirectorDeckTake
 
@@ -20,7 +24,11 @@ NODE_CLASS_MAPPINGS = {
     "DirectorDeck_AssetShelf": DirectorDeckAssetShelf,
     "DirectorDeck_ScriptDesk": DirectorDeckScriptDesk,
     "DirectorDeck_SegmentBrief": DirectorDeckSegmentBrief,
+    "DirectorDeck_FramePlanner": DirectorDeckFramePlanner,
     "DirectorDeck_DirectorTake": DirectorDeckTake,
+    "DirectorDeck_SeamFixer": DirectorDeckSeamFixer,
+    "DirectorDeck_FinalCut": DirectorDeckFinalCut,
+    "DirectorDeck_SegmentCache": DirectorDeckSegmentCache,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -29,7 +37,11 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "DirectorDeck_AssetShelf": "DirectorDeck · 资产管理器",
     "DirectorDeck_ScriptDesk": "DirectorDeck · 剧本加载器",
     "DirectorDeck_SegmentBrief": "DirectorDeck · 段级剧本",
+    "DirectorDeck_FramePlanner": "DirectorDeck · 帧计划器",
     "DirectorDeck_DirectorTake": "DirectorDeck · 视频生成器",
+    "DirectorDeck_SeamFixer": "DirectorDeck · 接缝修正器",
+    "DirectorDeck_FinalCut": "DirectorDeck · 多段合并器",
+    "DirectorDeck_SegmentCache": "DirectorDeck · 抽卡缓存",
 }
 
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]

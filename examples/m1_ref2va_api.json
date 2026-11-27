@@ -39,13 +39,17 @@
       "preview": true,
       "vram_policy": "release",
       "cleanup_segments": "ask",
-      "output_dir": "DirectorDeck"
+      "output_dir": "DirectorDeck",
+      "seam_enabled": true,
+      "seam_window": 12,
+      "seam_max_add": 0.1,
+      "seam_gain_limit": 0.04
     }
   },
   "3": {
     "class_type": "DirectorDeck_ScriptDesk",
     "inputs": {
-      "text": "第1段（5秒）\n清晨的湖面，薄雾浮动，一叶小舟缓缓划过，镜头从远处缓慢推进，暖金色晨光。\n\n第2段（5秒）\n特写：船夫粗糙的手握住船桨，水珠从桨叶落下，逆光里的水雾，镜头极慢推近。\n",
+      "text": "第1段（5秒）\n清晨的湖面，薄雾浮动，一叶小舟缓缓划过，镜头从远处缓慢推进，暖金色晨光。\n\n第2段（5秒）\n特写：船夫粗糙的手握住船桨，水珠从桨叶落下，逆光里的水雾，镜头极慢推近。\n\n第3段（5秒）\n镜头升到高处俯瞰：小舟驶向湖心，晨雾散开，远山轮廓浮现，画面安静收尾。\n",
       "mode": "auto",
       "default_seconds": 5.0,
       "max_segments": 64,

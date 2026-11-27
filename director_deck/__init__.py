@@ -27,8 +27,11 @@ try:
 
     NODE_CLASS_MAPPINGS.update(_classes)
     NODE_DISPLAY_NAME_MAPPINGS.update(_names)
-except Exception:  # ComfyUI 未就绪（例如纯 Python 单测环境）时允许只有 core
-    print("[DirectorDeck] 节点层未加载（非 ComfyUI 环境或依赖缺失）：")
+except ModuleNotFoundError as exc:
+    # 最常见的情况：在本机没装 ComfyUI 的普通 Python 里跑单测。
+    print(f"[DirectorDeck] 节点层未加载（非 ComfyUI 环境：{exc}），core 仍可用")
+except Exception:  # 其它异常说明是真的写错了，打完整堆栈方便排查
+    print("[DirectorDeck] 节点层加载失败：")
     traceback.print_exc()
 
 _WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")

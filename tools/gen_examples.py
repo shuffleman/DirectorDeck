@@ -32,6 +32,9 @@ SCRIPT = """第1段（5秒）
 
 第2段（5秒）
 特写：船夫粗糙的手握住船桨，水珠从桨叶落下，逆光里的水雾，镜头极慢推近。
+
+第3段（5秒）
+镜头升到高处俯瞰：小舟驶向湖心，晨雾散开，远山轮廓浮现，画面安静收尾。
 """
 
 
@@ -67,6 +70,9 @@ def config_node() -> dict:
             "interpolate_to_steps": 10, "seed_strategy": "per_segment",
             "seed_base": 12345, "preview": True, "vram_policy": "release",
             "cleanup_segments": "ask", "output_dir": "DirectorDeck",
+            # M2 接缝参数（不填会用默认值，但 API 格式要求显式给）
+            "seam_enabled": True, "seam_window": 12,
+            "seam_max_add": 0.10, "seam_gain_limit": 0.04,
         },
     }
 
@@ -153,10 +159,69 @@ def ref2va() -> dict:
     return graph
 
 
+def m2_chain() -> dict:
+    """M2 三链示例：3 段 × 5s 续写 -> 合并 -> 出片。
+
+    三段共用同一份模型/配置/剧本；第 2、3 段通过 previous_segment 接上一段，
+    continuity=guide_tail 让生成器自动取上一段尾巴做画面+音轨引导。
+    """
+    graph = {
+        "1": loader_node(),
+        "2": config_node(),
+        "3": script_node(),
+        "4": {"class_type": "DirectorDeck_FramePlanner",
+              "inputs": {"script": ["3", 0], "config": ["2", 0], "keep_full": True}},
+    }
+    # 三次生成：注意 bundle_policy 第一段 provided、后面 inherit；continuity 首段 start、后面 guide_tail。
+    gen = [
+        {"id": "10", "index": 1, "bundle_policy": "provided",
+         "continuity": "start", "assets_policy": "clear"},
+        {"id": "11", "index": 2, "bundle_policy": "inherit",
+         "continuity": "guide_tail", "assets_policy": "inherit"},
+        {"id": "12", "index": 3, "bundle_policy": "inherit",
+         "continuity": "guide_tail", "assets_policy": "inherit"},
+    ]
+    for item in gen:
+        inputs = {
+            "bundle": ["1", 0],
+            "config": ["2", 0],
+            "script": ["3", 0],
+            "segment_index": item["index"],
+            "bundle_policy": item["bundle_policy"],
+            "config_policy": "inherit",
+            "assets_policy": item["assets_policy"],
+            "brief_policy": "inherit",
+            "cast_policy": "inherit",
+            "continuity": item["continuity"],
+            "seed": 0,
+        }
+        if item["index"] > 1:
+            # 第 2 段接第 1 段（节点 10），第 3 段接第 2 段（节点 11）。
+            inputs["previous_segment"] = [{"2": "10", "3": "11"}[str(item["index"])], 0]
+        graph[item["id"]] = {"class_type": "DirectorDeck_DirectorTake", "inputs": inputs}
+
+    # 合并三段：调 FinalCut 的 segment/images/audio 三组输入。
+    cut_inputs = {
+        "segment_1": ["10", 0], "images_1": ["10", 1], "audio_1": ["10", 2],
+        "segment_2": ["11", 0], "images_2": ["11", 1], "audio_2": ["11", 2],
+        "segment_3": ["12", 0], "images_3": ["12", 1], "audio_3": ["12", 2],
+    }
+    graph["20"] = {"class_type": "DirectorDeck_FinalCut", "inputs": cut_inputs}
+    graph["21"] = {"class_type": "CreateVideo",
+                   "inputs": {"images": ["20", 0], "fps": 24.0, "audio": ["20", 1],
+                              "bit_depth": 8, "color_space": "sRGB",
+                              "chroma_subsampling": "auto", "codec": "h264"}}
+    graph["22"] = {"class_type": "SaveVideo",
+                   "inputs": {"video": ["21", 0], "filename_prefix": "DirectorDeck/M2_chain",
+                              "format": "auto", "codec": "auto"}}
+    return graph
+
+
 def main() -> int:
     os.makedirs(EXAMPLE_DIR, exist_ok=True)
     for name, graph in (("m1_single_segment_api", single()),
-                        ("m1_ref2va_api", ref2va())):
+                        ("m1_ref2va_api", ref2va()),
+                        ("m2_chain_api", m2_chain())):
         path = os.path.join(EXAMPLE_DIR, name + ".json")
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(graph, fh, ensure_ascii=False, indent=2)

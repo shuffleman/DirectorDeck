@@ -54,6 +54,25 @@ class ExampleTest(unittest.TestCase):
         self.assertIn("brief", take["inputs"])
         self.assertEqual(take["inputs"]["brief_policy"], "replace")
 
+    def test_m2_chain(self):
+        graph = load("m2_chain_api.json")
+        self._check(graph)
+        classes = {n["class_type"] for n in graph.values()}
+        for expected in ("DirectorDeck_FramePlanner", "DirectorDeck_DirectorTake",
+                         "DirectorDeck_FinalCut", "CreateVideo", "SaveVideo"):
+            self.assertIn(expected, classes)
+        takes = [n for n in graph.values() if n["class_type"] == "DirectorDeck_DirectorTake"]
+        self.assertEqual(len(takes), 3)
+        # 第 2/3 段必须接 previous_segment，且 continuity=guide_tail。
+        chained = [n for n in takes if "previous_segment" in n["inputs"]]
+        self.assertEqual(len(chained), 2)
+        for node in chained:
+            self.assertEqual(node["inputs"]["continuity"], "guide_tail")
+            self.assertEqual(node["inputs"]["bundle_policy"], "inherit")
+        cut = next(n for n in graph.values() if n["class_type"] == "DirectorDeck_FinalCut")
+        for key in ("segment_3", "images_3", "audio_3"):
+            self.assertIn(key, cut["inputs"])
+
 
 if __name__ == "__main__":
     unittest.main()
