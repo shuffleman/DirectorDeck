@@ -1,0 +1,101 @@
+"""DirectorDeck · 全局配置（M1）。
+
+整条链只有一个配置真相源：分辨率、段时长、衔接帧、采样参数、种子策略、预览开关……
+每段都可以用 config_policy=overrides 覆盖“安全子集”，但画布/fps/模型改不了。
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+
+from ..core import frames
+from ..core.types import CATEGORY, FPS, TYPE_CONFIG
+
+# 种子策略：
+# - per_segment：每段错开（默认，方便多段不撞脸）；
+# - fixed：全片同一个种子；
+# - increment：每段 +1。
+SEED_STRATEGIES = ["per_segment", "fixed", "increment"]
+
+# 显存策略（M2 起真正生效）：release=每段后释放；unload=卸载模型；none=不管。
+VRAM_POLICIES = ["release", "unload", "none"]
+
+# 段文件清理策略：ask=问用户；auto=自动清中间文件；keep=全留。
+CLEANUP_MODES = ["ask", "auto", "keep"]
+
+# 13 号工作流同款 sigma 表（7 个点，插值到 10 步）。
+DEFAULT_SIGMAS = "1.0, 0.972973, 0.923077, 0.8, 0.571429, 0.333333, 0.0"
+
+
+class DirectorDeckConfig:
+    """全局配置节点：输出 DIRECTOR_CONFIG。"""
+
+    CATEGORY = f"{CATEGORY}/加载"
+    FUNCTION = "build"
+    RETURN_TYPES = (TYPE_CONFIG,)
+    RETURN_NAMES = ("config",)
+    DESCRIPTION = ("整条链唯一的配置来源。宽高须 32 倍数；fps 固定 24；"
+                   "handoff_frames 只允许 5/22/39/56（17n+5 衔接栅格）。")
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "width": ("INT", {"default": 640, "min": 32, "max": 16384, "step": 32}),
+                "height": ("INT", {"default": 352, "min": 32, "max": 16384, "step": 32}),
+                "segment_seconds": ("FLOAT", {"default": 5.0, "min": 0.5, "max": 60.0, "step": 0.1}),
+                "handoff_frames": ("INT", {"default": 22, "min": 5, "max": 56, "step": 1,
+                                           "tooltip": "衔接帧数，吸附到 5/22/39/56"}),
+                "sampler_name": (["er_sde", "euler", "dpmpp_2m", "dpmpp_2m_sde"], {"default": "er_sde"}),
+                "scheduler": (["beta", "normal", "karras", "simple"], {"default": "beta"}),
+                "steps": ("INT", {"default": 10, "min": 1, "max": 100}),
+                "denoise": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01}),
+                "sigmas_string": ("STRING", {"default": DEFAULT_SIGMAS, "multiline": False,
+                                             "tooltip": "自定义 sigma 表（13 号同款）；空=用 scheduler+steps 计算"}),
+                "interpolate_to_steps": ("INT", {"default": 10, "min": 0, "max": 255}),
+                "seed_strategy": (SEED_STRATEGIES, {"default": "per_segment"}),
+                "seed_base": ("INT", {"default": 0, "min": 0, "max": 0xFFFFFFFFFFFFFFFF}),
+                "preview": ("BOOLEAN", {"default": True}),
+                "vram_policy": (VRAM_POLICIES, {"default": "release"}),
+                "cleanup_segments": (CLEANUP_MODES, {"default": "ask"}),
+            },
+            "optional": {
+                "output_dir": ("STRING", {"default": "DirectorDeck"}),
+            },
+        }
+
+    @classmethod
+    def IS_CHANGED(cls, **kwargs):
+        # 配置一变，下游所有节点都应该重算；配置没变则复用。
+        return hashlib.sha1(json.dumps(kwargs, sort_keys=True, ensure_ascii=False)
+                            .encode("utf-8")).hexdigest()
+
+    def build(self, width, height, segment_seconds, handoff_frames, sampler_name,
+              scheduler, steps, denoise, sigmas_string, interpolate_to_steps,
+              seed_strategy, seed_base, preview, vram_policy, cleanup_segments,
+              output_dir="DirectorDeck"):
+        # 画布硬约束先拦住：不是 32 倍数直接报错，别等模型加载完才炸。
+        frames.validate_canvas(width, height)
+        config = {
+            "schema": "DIRECTOR_CONFIG@1",
+            "width": int(width),
+            "height": int(height),
+            "fps": FPS,  # 锁死 24，不允许用户改
+            "segment_seconds": float(segment_seconds),
+            # 衔接帧吸附到 5/22/39/56，用户填 1~56 都能接受。
+            "handoff_frames": frames.context_frames_for(handoff_frames),
+            "sampler_name": str(sampler_name),
+            "scheduler": str(scheduler),
+            "steps": int(steps),
+            "denoise": float(denoise),
+            "sigmas_string": str(sigmas_string or "").strip(),
+            "interpolate_to_steps": int(interpolate_to_steps),
+            "seed_strategy": str(seed_strategy),
+            "seed_base": int(seed_base),
+            "preview": bool(preview),
+            "vram_policy": str(vram_policy),
+            "cleanup_segments": str(cleanup_segments),
+            "output_dir": str(output_dir or "DirectorDeck"),
+        }
+        return (config,)

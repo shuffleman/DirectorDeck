@@ -1,5 +1,6 @@
 """分段覆盖/继承解析单测（核心契约 §3/§4）。"""
 
+import json
 import unittest
 
 from director_deck.core import policy
@@ -195,6 +196,22 @@ class ConfigOverrideTest(unittest.TestCase):
                                    sockets={"config_override": {"width": 1080}},
                                    defaults=defaults)
         self.assertEqual(ctx.exception.code, "DD-E006")
+
+
+class SerializableTest(unittest.TestCase):
+    """回归测试：曾经把 VAE 对象塞进 segment 元数据，ComfyUI 写 history 时 JSON 崩了。"""
+
+    def test_canonical_is_json_safe(self):
+        defaults = base_defaults()
+        fake_bundle = {**defaults["bundle"], "bundle_id": "sha1:test",
+                       "spec": {"fl2va_model": "m"}, "model": object(), "vae": object()}
+        defaults["bundle"] = fake_bundle
+        resolved = policy.resolve_segment(
+            index=0, policies=full_policies(), sockets={"bundle": fake_bundle},
+            defaults=defaults)
+        text = json.dumps(resolved.canonical(), ensure_ascii=False)  # 不能抛 TypeError
+        self.assertIn("sha1:test", text)
+        self.assertIn("fl2va_model", text)
 
 
 class HashTest(unittest.TestCase):
