@@ -355,6 +355,7 @@ segment_fingerprint = "sha1:" + sha1(canonical_json({
 | 14 | `DirectorDeck_OutputLibrary`（可选） | path+FILE | segment/manifest、dir、naming |
 | 15 | `DirectorDeck_PromptSmith`（可选） | STRING | template/task、remote provider（默认关） |
 | 16 | `DirectorDeck_DirectorRunner`（M4，可选） | ALL | plan/config、run_mode |
+| 17 | `DirectorDeck_TTSBooth`（0.3.0） | CAST + AUDIO×3 + STRING | breeze_model（BREEZE_TTS2_MODEL）、lines（`角色 @起始秒 \| 音色描述 \| 台词`）、mix_mode/duck_db/attack_ms/release_ms、Breeze 生成参数（cfg_scale/max_new_tokens/temperature/top_k/top_p/repetition_penalty/depth_*/seed）；**可选依赖 ComfyUI-Breeze-TTS-2**，缺包报 `DD-E050` |
 
 参数顺序规则：**只追加**；`*_policy` 放在对应输入旁；旧 ID 提供别名。
 
@@ -378,6 +379,7 @@ segment_fingerprint = "sha1:" + sha1(canonical_json({
 | `DD-E021` | 宽高不是 32 倍数 |
 | `DD-E030` | 数字人锁音：音轨缺失/长度不匹配 |
 | `DD-E031` | 链内 bundle 不一致 |
+| `DD-E050` | TTS 节点不可用（未安装 ComfyUI-Breeze-TTS-2，或台词表格式错误） |
 
 ---
 
@@ -423,6 +425,9 @@ segment_fingerprint = "sha1:" + sha1(canonical_json({
 | `DirectorDeck_M3_数字人锁音.json` | `m3_digital_human_api.json` |
 | `DirectorDeck_M4_锁音无损.json` | `m4_lock_finalcut_api.json` |
 | `DirectorDeck_M5_latent续写.json` | `m5_latent_chain_api.json`（0.2.1） |
+| `DirectorDeck_M6_多角色混音.json` | `m6_mix_rules_api.json`（0.2.3） |
+| `DirectorDeck_M8_TTS锁音.json` | `m8_tts_lock_api.json`（0.2.5） |
+| `DirectorDeck_M9_台词表配音.json` | `m9_tts_booth_api.json`（0.3.0） |
 
 生成与校验：`python tools/make_ui_workflows.py [server]` —— 从运行中 ComfyUI 拉 `object_info`，
 按真实控件顺序生成 `widgets_values`，再用 `ui_to_api()` 反向还原并与 API 示例逐输入比对

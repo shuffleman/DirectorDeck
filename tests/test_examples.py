@@ -137,6 +137,24 @@ class ExampleTest(unittest.TestCase):
                    if n["class_type"] == "DirectorDeck_FinalCut")
         self.assertTrue(cut["inputs"]["audio_from_source"])
 
+    def test_m9_tts_booth(self):
+        graph = load("m9_tts_booth_api.json")
+        self._check(graph)
+        classes = {n["class_type"] for n in graph.values()}
+        for expected in ("BreezeTTS2LoadModel", "DirectorDeck_TTSBooth",
+                         "DirectorDeck_DirectorTake", "DirectorDeck_FinalCut",
+                         "SaveAudio", "SaveVideo"):
+            self.assertIn(expected, classes)
+        booth = next(n for n in graph.values()
+                     if n["class_type"] == "DirectorDeck_TTSBooth")
+        self.assertIn("女主 @0.0", booth["inputs"]["lines"])
+        self.assertIn("男主 @1.2", booth["inputs"]["lines"])
+        self.assertEqual(booth["inputs"]["mix_mode"], "priority")
+        take = next(n for n in graph.values()
+                    if n["class_type"] == "DirectorDeck_DirectorTake")
+        self.assertEqual(take["inputs"]["cast_policy"], "replace")
+        self.assertIn("cast", take["inputs"])
+
     def test_m7_crossfade(self):
         graph = load("m7_crossfade_api.json")
         self._check(graph)

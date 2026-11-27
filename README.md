@@ -15,7 +15,7 @@ ComfyUI 节点库：**AI 短剧导演台**。把“模型 + 素材 + 剧本 + �
 | **M2 链式多段** | ✅ | 帧计划器、尾帧/尾音引导续写（RGB）、接缝曝光修正、多段合并、抽卡缓存；3 段 16.5s 真机出片；0.2.1 补 latent_tail 续写 |
 | **M3 锁音+二采** | ✅ | 数字人锁音（逐流 noise_mask=0 真锁）、AV latent 拆合手术、二采（低 denoise 再采样）、音频 VAE 编解码；真机验证 |
 | **M4 前端体验** | ✅ | 导演台浮动面板（添加下一段/覆盖节点/重抽/段清单）、后端 JSON 路由、FinalCut 源音频无损混流 |
-| **M5 发布** | ✅ | 6 个画布工作流（examples/ui）、安装/工作流文档、CHANGELOG、Registry 元数据与发布 workflow |
+| **M5 发布** | ✅ | 9 个画布工作流（examples/ui）、安装/工作流文档、CHANGELOG、Registry 元数据与发布 workflow；0.3.0 补台词表一键配音 |
 
 ## 快速开始
 
@@ -34,6 +34,8 @@ ComfyUI 节点库：**AI 短剧导演台**。把“模型 + 素材 + 剧本 + �
 | `DirectorDeck_M4_锁音无损.json` | 源音频逐样点无损混流 |
 | `DirectorDeck_M5_latent续写.json` | 两段 latent 尾 token 续写（0.2.1，最快） |
 | `DirectorDeck_M6_多角色混音.json` | 多角色锁音 + 自动 ducking（0.2.3） |
+| `DirectorDeck_M8_TTS锁音.json` | 两个 VoiceDesign → 锁音 → H3（0.3.0） |
+| `DirectorDeck_M9_台词表配音.json` | 台词表一键多角色配音 → 锁音（0.3.0） |
 
 > 0.2.1 起续写多了一个更快的模式：把生成器的 `continuity` 选成 **`latent_tail`**，
 > 第 2 段会直接搬上一段 latent 的尾部 token（mask=0 钉住），省掉 RGB 解码/编码的绕路。
@@ -74,6 +76,7 @@ ComfyUI 节点库：**AI 短剧导演台**。把“模型 + 素材 + 剧本 + �
 | `DirectorDeck_FinalCut` | 多段合并：自动裁衔接头、拼音轨、写 manifest；可选 `audio_from_source` 用锁音源轨（无损） |
 | `DirectorDeck_SegmentCache` | 抽卡记录（status/store/clear，只存元数据） |
 | `DirectorDeck_VoiceLock` | 数字人锁音器：角色→音频槽+时间轴起点（+增益/优先级）；多角色自动 ducking / 混音 |
+| `DirectorDeck_TTSBooth` | TTS 台词表（可选依赖 Breeze-TTS-2）：一张台词表 → 多角色配音 + 可锁音 CAST |
 | `DirectorDeck_Refiner` | 二采工具：低 denoise 再采样（音频锁定）或 lanczos 放大 |
 
 ## 多角色锁音：自动 ducking / 混音（0.2.3）
@@ -128,6 +131,18 @@ BreezeTTS2LoadModel ──┬─ BreezeTTS2VoiceDesign(女主台词/音色描述
 真机示例：`examples/m8_tts_lock_api.json`（女主 0s / 男主 1.2s，priority ducking，存两路原声方便核对）。
 验证结果：成片音频与两路 TTS 原声拟合 **corr=0.999**；A 停后 B 恢复满音量；
 重叠区 ducking 中位 **-7.0dB**、最安静窗口 **-7.85dB**（目标 -8dB）。
+
+### 一键版：`DirectorDeck_TTSBooth`（台词表）
+
+不想手摆多个 TTS 节点时，用 **TTS 台词表**：写一张表
+`角色 @起始秒 | 音色描述 | 台词`，节点自动逐条生成并按角色拼好音轨，直接输出可锁音的 `cast`
+（3 路音频可试听/保存）。角色第一次出现的顺序就是 ducking 优先级；固定 seed 可复现/命中缓存。
+
+- 画布：`examples/ui/DirectorDeck_M9_台词表配音.json`
+- API：`examples/m9_tts_booth_api.json`
+- 真机验证：女主 2.32s / 男主音轨 4.08s（1.2s 起），124 帧成片；
+  单角色段与原音轨拟合 **corr=1.000**，重叠 ducking 中位 **-7.30dB**、p10 **-7.87dB**；
+  重启后重跑 Take **0.41s 命中缓存**（整条 prompt 43.9s，无 H3 采样）。
 
 ## 跨段一致性 + 混音快捷控件（0.2.4）
 

@@ -12,6 +12,8 @@
 | `DirectorDeck_M4_锁音无损.json` | 锁音 + 源音频无损合并 | 成片音频要与源文件逐样点一致 |
 | `DirectorDeck_M5_latent续写.json` | latent 尾 token 续写 | 想更快、更接近原生续写 |
 | `DirectorDeck_M6_多角色混音.json` | 多角色锁音 + 自动 ducking | 两个以上角色同时说话 |
+| `DirectorDeck_M8_TTS锁音.json` | 本地 Breeze-TTS-2 两路发声 → 锁音 | 想用本地 TTS 当配音 |
+| `DirectorDeck_M9_台词表配音.json` | 台词表一键多角色配音 → 锁音 | 台词都是文本、想少摆节点 |
 
 ## 打开后先改什么
 
@@ -43,6 +45,19 @@
 4. Voice Lock 的 `cast` 接 `Director Take`（`cast_policy=replace`），后面照常 `FinalCut(audio_from_source=True)` 混源音轨。
 
 注意：TTS 音频长度要落在该段采样窗口内；角色起始秒按整条时间轴算，超出窗口的尾巴会被截断。
+
+### 一键版：TTS 台词表
+
+`DirectorDeck_M9_台词表配音.json` 里只有一个「TTS 台词表」节点：
+
+```
+女主 @0.0 | 一位年轻女性，声音清澈温柔，语速偏慢。 | 你好，我是这部剧的女主角。
+男主 @1.2 | 一位年轻男性，声音低沉沉稳，语气干练。 | 收到，我去检查船桨，五分钟以后开拍。
+```
+
+- 每行 `角色 @起始秒 | 音色描述 | 台词`；同一角色可写多行；
+- 角色第一次出现的顺序 = ducking 优先级；`seed` 固定可复现；
+- 输出 `cast` 直接接视频生成器（`cast_policy=replace`），`audio_1..3` 可接 SaveAudio 试听。
 
 ## 多角色锁音的角色行格式
 

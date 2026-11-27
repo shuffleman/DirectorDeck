@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.3.0 — 台词表一键配音节点 + M8/M9 画布工作流（2026-11-28）
+
+### 新增
+- **`DirectorDeck_TTSBooth`（TTS 台词表）**：一张台词表 → 多角色 TTS → 直接可锁音的 CAST。
+  - 每行格式：`角色 @起始秒 | 音色描述 | 台词`；
+  - 内部自动调 Breeze-TTS-2 的 `VoiceDesign` 逐条生成（种子 = `seed + 行号`，可复现）；
+  - 同一角色的多条台词按起始秒拼进同一条音轨；角色第一次出现的顺序 = ducking 优先级；
+  - 输出 `cast` + 3 路可试听/保存的 `audio_1..3` + 文字摘要；
+  - 可选依赖：没装 ComfyUI-Breeze-TTS-2 时报 `DD-E050`，不影响 DirectorDeck 其他节点。
+- **M8 画布工作流**：`examples/ui/DirectorDeck_M8_TTS锁音.json`（两个 VoiceDesign → 锁音 → H3）。
+- **M9 画布工作流**：`examples/ui/DirectorDeck_M9_台词表配音.json`（台词表节点 → 锁音 → H3）。
+- API 示例：`examples/m9_tts_booth_api.json`；UI 工作流总数 9 个，全部 round-trip PASS。
+
+### 修复
+- Breeze 适配层调用节点方法返回 tuple，之前直接当 dict 用导致 `TypeError`；现在解包第一个 AUDIO。
+
+### 验证（8189 真机）
+- M9 第一次：2 条台词 → 女主音轨 2.32s、男主音轨 4.08s（起点 1.2s），H3 生成 **124 帧 / 5.17s**；
+  - 成片音频与两路角色音轨拟合：A-only **corr=1.000**、B-only **corr=1.000**（g≈1.41，声道测量常数）；
+  - 重叠区 ducking：中位 **-7.30dB**、最安静 10% 窗口 **-7.87dB**（目标 -8dB）。
+- M9 重启后重跑：TTS 固定种子输出一致，Take **0.41s 命中缓存**；整条 prompt **43.9s**（仅重跑 TTS，无 H3 采样）。
+
 ## 0.2.5 — 本地 TTS（Breeze-TTS-2）接入锁音（2026-11-27）
 
 ### 新增

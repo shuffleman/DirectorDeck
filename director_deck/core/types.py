@@ -123,6 +123,7 @@ ERROR_MESSAGES = {
     "DD-E021": "宽高不是 32 的倍数",
     "DD-E030": "数字人锁音：音轨缺失或长度不匹配",
     "DD-E031": "链内模型 bundle 不一致",
+    "DD-E050": "TTS 节点不可用（未安装 ComfyUI-Breeze-TTS-2）",
 }
 
 

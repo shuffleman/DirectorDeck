@@ -37,6 +37,10 @@
 角色行写 `角色名: 槽号, 起始秒`。完整示例见 `examples/m8_tts_lock_api.json`。
 TTS 输出 24kHz 单声道，锁音器会自动重采样到 32kHz。
 
+也可以用 **DirectorDeck · TTS 台词表**（`DirectorDeck_TTSBooth`）一键生成：
+写 `角色 @起始秒 | 音色描述 | 台词` 多行，节点自动逐条调 Breeze-TTS-2 并输出可锁音的 CAST。
+示例：`examples/m9_tts_booth_api.json`、画布 `examples/ui/DirectorDeck_M9_台词表配音.json`。
+
 ## 2. 安装（三选一）
 
 ### A. 开发模式（推荐，改代码立即生效，重启 ComfyUI 后加载）

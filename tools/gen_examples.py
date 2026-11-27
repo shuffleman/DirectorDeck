@@ -501,6 +501,60 @@ def m8_tts_lock() -> dict:
     return graph
 
 
+def m9_tts_booth() -> dict:
+    """M9 台词表一键配音示例（DirectorDeck_TTSBooth）。
+
+    一张台词表（角色 @起始秒 | 音色描述 | 台词）直接生成多角色 CAST，
+    再喂给视频生成器锁音；节点内部自动调 Breeze-TTS-2 的 VoiceDesign。
+    """
+    lines = (
+        "女主 @0.0 | 一位年轻女性，声音清澈温柔，语速偏慢，情绪平静。 | 你好，我是这部剧的女主角。\n"
+        "男主 @1.2 | 一位年轻男性，声音低沉沉稳，语气干练。 | 收到，我去检查船桨，五分钟以后开拍。"
+    )
+    graph = {
+        "1": loader_node(),
+        "2": config_node(),
+        "3": script_node(),
+        "4": {"class_type": "BreezeTTS2LoadModel",
+              "inputs": {"model": "int8 hybrid (recommended)", "dtype": "auto",
+                         "device": "auto", "attention": "auto",
+                         "decode_mode": "eager", "download_if_missing": False}},
+        "5": {"class_type": "DirectorDeck_TTSBooth",
+              "inputs": {"breeze_model": ["4", 0], "lines": lines,
+                         "mix_mode": "priority", "duck_db": -8.0,
+                         "attack_ms": 60, "release_ms": 200,
+                         "cfg_scale": 4.0, "max_new_tokens": 1500,
+                         "temperature": 0.9, "top_k": 50, "top_p": 1.0,
+                         "repetition_penalty": 1.1, "depth_temperature": 0.9,
+                         "depth_top_k": 50, "depth_top_p": 1.0,
+                         "seed": 20261128}},
+        "10": {"class_type": "DirectorDeck_DirectorTake",
+               "inputs": {"bundle": ["1", 0], "config": ["2", 0], "script": ["3", 0],
+                          "segment_index": 1, "bundle_policy": "provided",
+                          "config_policy": "inherit", "assets_policy": "clear",
+                          "brief_policy": "inherit", "cast_policy": "replace",
+                          "continuity": "start", "seed": 0, "cache_mode": "auto",
+                          "cast": ["5", 0]}},
+        "40": {"class_type": "DirectorDeck_FinalCut",
+               "inputs": {"segment_1": ["10", 0], "images_1": ["10", 1],
+                          "audio_1": ["10", 2], "save_manifest": True,
+                          "audio_from_source": True, "audio_crossfade_ms": 0}},
+        "41": {"class_type": "CreateVideo",
+               "inputs": {"images": ["40", 0], "fps": 24.0, "audio": ["40", 1],
+                          "codec": "h264"}},
+        "42": {"class_type": "SaveVideo",
+               "inputs": {"video": ["41", 0], "filename_prefix": "DirectorDeck/M9_booth",
+                          "format": "auto", "codec": "auto"}},
+        "43": {"class_type": "SaveAudio",
+               "inputs": {"audio": ["40", 1], "filename_prefix": "DirectorDeck/M9_booth_mix"}},
+        "44": {"class_type": "SaveAudio",
+               "inputs": {"audio": ["5", 1], "filename_prefix": "DirectorDeck/M9_booth_a"}},
+        "45": {"class_type": "SaveAudio",
+               "inputs": {"audio": ["5", 2], "filename_prefix": "DirectorDeck/M9_booth_b"}},
+    }
+    return graph
+
+
 def main() -> int:
     os.makedirs(EXAMPLE_DIR, exist_ok=True)
     for name, graph in (("m1_single_segment_api", single()),
@@ -512,7 +566,8 @@ def main() -> int:
                         ("m5_latent_chain_api", m5_latent_chain()),
                         ("m6_mix_rules_api", m6_mix_rules()),
                         ("m7_crossfade_api", m7_crossfade()),
-                        ("m8_tts_lock_api", m8_tts_lock())):
+                        ("m8_tts_lock_api", m8_tts_lock()),
+                        ("m9_tts_booth_api", m9_tts_booth())):
         path = os.path.join(EXAMPLE_DIR, name + ".json")
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(graph, fh, ensure_ascii=False, indent=2)

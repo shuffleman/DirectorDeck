@@ -33,6 +33,7 @@
 | **0.2.3**（✅） | 多角色锁音自动 ducking / 混音规则（auto_duck/priority/sum + 每路增益/优先级 + 平滑包络 + 限幅） | 应用层 priority 实测 -7.99dB（目标 -8）、sum 0.00dB；真机 M6 两路锁音成片验证 |
 | **0.2.4**（✅） | 跨段 ducking 一致性（增益状态/尾音上下文 + 缓存持久化）+ FinalCut 等功率交叉淡化 + 前端混音快捷控件 | 第二段开头继承 B=0.398（对比重置低 5.68dB）；M7 真机 crossfade 对比；`node --check` 通过 |
 | **0.2.5**（✅） | 本地 TTS（Breeze-TTS-2）接入锁音示例；锁音缓存指纹加入音频内容哈希（cache_schema=2） | M8 真机两路 TTS 成片；拟合 corr=0.999；重叠 ducking 中位 -7.0dB/p10 -7.85dB；TTS 24k→32k 自动重采样 |
+| **0.3.0**（✅） | TTS 台词表节点（台词表→多角色 TTS→CAST）；M8/M9 画布工作流 | M9 真机 2 角色/124 帧；单角色段 corr=1.000，ducking 中位 -7.30dB/p10 -7.87dB；缓存重跑 Take 0.41s；9 个 UI 工作流 round-trip 全 PASS |
 
 ## 工程约定
 

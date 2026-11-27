@@ -18,6 +18,7 @@ from .script_node import DirectorDeckScriptDesk
 from .seam_fixer import DirectorDeckSeamFixer
 from .shelf import DirectorDeckAssetShelf
 from .take import DirectorDeckTake
+from .tts_booth import DirectorDeckTTSBooth
 from .voice_lock import DirectorDeckVoiceLock
 
 NODE_CLASS_MAPPINGS = {
@@ -32,6 +33,7 @@ NODE_CLASS_MAPPINGS = {
     "DirectorDeck_FinalCut": DirectorDeckFinalCut,
     "DirectorDeck_SegmentCache": DirectorDeckSegmentCache,
     "DirectorDeck_VoiceLock": DirectorDeckVoiceLock,
+    "DirectorDeck_TTSBooth": DirectorDeckTTSBooth,
     "DirectorDeck_Refiner": DirectorDeckRefiner,
 }
 
@@ -47,6 +49,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "DirectorDeck_FinalCut": "DirectorDeck · 多段合并器",
     "DirectorDeck_SegmentCache": "DirectorDeck · 抽卡缓存",
     "DirectorDeck_VoiceLock": "DirectorDeck · 数字人锁音器",
+    "DirectorDeck_TTSBooth": "DirectorDeck · TTS 台词表（多角色配音）",
     "DirectorDeck_Refiner": "DirectorDeck · 二采工具",
 }
 
