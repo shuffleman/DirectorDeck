@@ -21,6 +21,7 @@ EXPECTED = {
     "DirectorDeck_M2_三段链.json": {"DirectorDeck_FinalCut"},
     "DirectorDeck_M3_数字人锁音.json": {"DirectorDeck_VoiceLock", "DirectorDeck_Refiner"},
     "DirectorDeck_M4_锁音无损.json": {"DirectorDeck_FinalCut", "SaveAudio"},
+    "DirectorDeck_M5_latent续写.json": {"DirectorDeck_DirectorTake", "DirectorDeck_FinalCut"},
 }
 
 

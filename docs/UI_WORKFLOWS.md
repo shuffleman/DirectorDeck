@@ -10,6 +10,7 @@
 | `DirectorDeck_M2_三段链.json` | 帧计划器 + 链式续写 + 接缝 + 合并 | 15 秒以上连续镜头 |
 | `DirectorDeck_M3_数字人锁音.json` | 锁音器 + 二采 | 给定台词、要口型对上的数字人 |
 | `DirectorDeck_M4_锁音无损.json` | 锁音 + 源音频无损合并 | 成片音频要与源文件逐样点一致 |
+| `DirectorDeck_M5_latent续写.json` | latent 尾 token 续写 | 想更快、更接近原生续写 |
 
 ## 打开后先改什么
 
@@ -27,7 +28,7 @@
 | `assets_policy` | `inherit` / `replace` / `merge` / `clear` | merge=按 `@图片N` 槽位覆盖 |
 | `brief_policy` | `inherit` / `replace` | 单独改某段文案 |
 | `cast_policy` | `inherit` / `replace` / `merge_by_character` | 换音色/锁音 |
-| `continuity` | `start`（第 1 段）/ `guide_tail` / `none` | none=新镜头硬切，不引导 |
+| `continuity` | `start`（第 1 段）/ `guide_tail` / `latent_tail` / `none` | `guide_tail`=RGB 尾帧+尾音引导；`latent_tail`=直接搬上一段 latent 尾部 token（更快，0.2.1）；`none`=新镜头硬切，不引导 |
 
 > 默认值是 `unset`：不选就报 `DD-E001`，这是故意的，防止“以为继承了其实没有”。
 

@@ -200,3 +200,101 @@ def restore_audio(sampled: dict, locked_audio: torch.Tensor) -> dict:
     out["samples"] = comfy.nested_tensor.NestedTensor((video, audio))
     out.pop("noise_mask", None)
     return out
+
+
+# ---------------------------------------------------------------- latent 尾帧续写
+def _existing_masks(latent: dict, video_t: int, audio_t: int,
+                    video: torch.Tensor, audio: torch.Tensor
+                    ) -> tuple[torch.Tensor, torch.Tensor]:
+    """取出 latent 里已有的逐流 mask；没有就新建全 1（表示全部要去噪）。
+
+    锁音之后的 mask 是“视频 1 / 音频 0”，latent 续写要在它基础上把开头几帧也钉住，
+    所以不能简单重建 mask，必须沿用已有的。
+    """
+    mask = latent.get("noise_mask") if isinstance(latent, dict) else None
+    if mask is not None and getattr(mask, "is_nested", False):
+        parts = mask.unbind()
+        if len(parts) == 2:
+            video_mask = parts[0].to(device=video.device, dtype=video.dtype)
+            audio_mask = parts[1].to(device=audio.device, dtype=audio.dtype)
+            return video_mask, audio_mask
+    video_mask = torch.ones((video.shape[0], 1, video_t, video.shape[3], video.shape[4]),
+                            device=video.device, dtype=video.dtype)
+    audio_mask = torch.ones((audio.shape[0], 1, audio.shape[2], audio_t),
+                            device=audio.device, dtype=audio.dtype)
+    return video_mask, audio_mask
+
+
+def latent_handoff(latent: dict, previous: dict, requested_head: int,
+                   lock_audio_only: bool = False) -> tuple[dict, dict]:
+    """latent 尾帧续写：把上一段 latent 的尾部 token 搬进新 latent 开头并钉住（mask=0）。
+
+    previous 里应有：
+      - video：上一段的视频 latent（[1,24,T,H,W]）
+      - audio：上一段的音频 latent（[1,32,2,Ta]）
+      - sample：上一段的像素帧数
+
+    为什么这么干：RGB 尾帧引导要把画面解码成图片再编码成条件，比较绕；
+    直接把上一段 latent 的尾部 token 放过来并设 noise_mask=0，
+    采样器就会原样保留它们，同时模型能基于这些 token 继续生成——更快、更贴近原生续写。
+    """
+    new_video, new_audio = split_av(latent)
+    prev_video = previous["video"].to(device=new_video.device, dtype=new_video.dtype)
+    prev_audio = previous["audio"].to(device=new_audio.device, dtype=new_audio.dtype)
+    sample_frames = int(previous.get("sample") or 0)
+    prev_tokens = int(prev_video.shape[2])
+    if sample_frames <= 0:
+        sample_frames = sum(_frame_spans(prev_tokens))
+
+    # 按 token 边界算“搬多少 token / 实际遮多少帧”（可能比 head 多 0~3 帧）。
+    k0, masked_frames = _tail_boundary(sample_frames, int(requested_head), prev_tokens)
+    count = min(prev_tokens - k0, int(new_video.shape[2]))
+    if count <= 0:
+        raise error("DD-E008", "上一段 latent 太短，无法做 latent 尾帧续写")
+
+    video_mask, audio_mask = _existing_masks(
+        latent, int(new_video.shape[2]), int(new_audio.shape[-1]), new_video, new_audio)
+    video = new_video.clone()
+    video[:, :, :count] = prev_video[:, :, k0:k0 + count]
+    video_mask = video_mask.clone()
+    video_mask[:, :, :count] = 0
+
+    audio = new_audio.clone()
+    if not lock_audio_only:
+        audio_count = int(round(masked_frames / 24.0 * AUDIO_LATENT_FPS))
+        audio_count = min(audio_count, int(new_audio.shape[-1]), int(prev_audio.shape[-1]))
+        if audio_count > 0:
+            audio[..., :audio_count] = prev_audio[..., -audio_count:]
+            audio_mask = audio_mask.clone()
+            audio_mask[..., :audio_count] = 0
+
+    packed = pack_av(video, audio, video_mask, audio_mask)
+    info = {
+        "mode": "latent_tail",
+        "tokens_copied": int(count),
+        "token_start": int(k0),
+        "masked_frames": int(masked_frames),
+        "audio_tokens": 0 if lock_audio_only else int(audio_count),
+    }
+    return packed, info
+
+
+def _frame_spans(token_count: int) -> list[int]:
+    from ..core.frames import token_frame_spans
+    return token_frame_spans(int(token_count))
+
+
+def _tail_boundary(sample_frames: int, head_frames: int, token_count: int) -> tuple[int, int]:
+    """按“实际 token 数”算边界（比 core 的公式更稳：直接用上一段 latent 的 T）。"""
+    from ..core.frames import token_frame_boundaries
+    boundaries = token_frame_boundaries(int(token_count))
+    target = int(sample_frames) - max(1, int(head_frames))
+    k0 = 0
+    for index, boundary in enumerate(boundaries):
+        if boundary <= target:
+            k0 = index
+        else:
+            break
+    k0 = max(0, min(k0, int(token_count)))
+    masked_frames = int(sample_frames) - boundaries[k0]
+    return k0, masked_frames

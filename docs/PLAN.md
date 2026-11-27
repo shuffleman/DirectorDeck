@@ -8,7 +8,7 @@
 |---|---|---|
 | D1 | 模型范围 | H3 优先；adapter 层隔离，后续可扩展 |
 | D2 | 多段方式 | 节点 + 前端"添加下一段" + CLI 三件套；先把节点做稳 |
-| D3 | 续写模式 | M2 先 RGB 尾帧（core AddGuide），M3 补 latent 尾帧（自定义张量节点） |
+| D3 | 续写模式 | **两种都已实现**：M2 先 RGB 尾帧（core AddGuide）；0.2.1 补 `latent_tail`（直接搬上一段 latent 尾部 token + mask=0，更快） |
 | D4 | 二采 | M3 先成片超分（SeedVR2 核心节点），再 H3 latent 二采 |
 | D5 | 锁音 | 自研节点做真锁音（分路 noise_mask=0），M2 底座 / M3 数字人模式 |
 | D6 | 前端 | M1 轻量 widget，M4 完整 web extension |

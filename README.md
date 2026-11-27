@@ -12,10 +12,10 @@ ComfyUI 节点库：**AI 短剧导演台**。把“模型 + 素材 + 剧本 + �
 |---|---|---|
 | **M0 骨架** | ✅ | 契约、包结构、core 纯函数（帧数学/policy/剧本/素材）、单测、CI |
 | **M1 单段闭环** | ✅ | 模型加载器、全局配置、资产管理器、剧本加载器、段级剧本、视频生成器；真机出片 |
-| **M2 链式多段** | ✅ | 帧计划器、尾帧/尾音引导续写、接缝曝光修正、多段合并、抽卡缓存；3 段 16.5s 真机出片 |
+| **M2 链式多段** | ✅ | 帧计划器、尾帧/尾音引导续写（RGB）、接缝曝光修正、多段合并、抽卡缓存；3 段 16.5s 真机出片；0.2.1 补 latent_tail 续写 |
 | **M3 锁音+二采** | ✅ | 数字人锁音（逐流 noise_mask=0 真锁）、AV latent 拆合手术、二采（低 denoise 再采样）、音频 VAE 编解码；真机验证 |
 | **M4 前端体验** | ✅ | 导演台浮动面板（添加下一段/覆盖节点/重抽/段清单）、后端 JSON 路由、FinalCut 源音频无损混流 |
-| **M5 发布** | ✅ | 5 个画布工作流（examples/ui）、安装/工作流文档、CHANGELOG、Registry 元数据与发布 workflow |
+| **M5 发布** | ✅ | 6 个画布工作流（examples/ui）、安装/工作流文档、CHANGELOG、Registry 元数据与发布 workflow |
 
 ## 快速开始
 
@@ -29,9 +29,14 @@ ComfyUI 节点库：**AI 短剧导演台**。把“模型 + 素材 + 剧本 + �
 |---|---|
 | `DirectorDeck_M1_单段闭环.json` | 单镜头 5 秒 |
 | `DirectorDeck_M1_参考生视频.json` | 参考图 + `@图片N` + 段级剧本 |
-| `DirectorDeck_M2_三段链.json` | 3 段续写 + 接缝 + 合并 + manifest |
+| `DirectorDeck_M2_三段链.json` | 3 段续写（RGB 尾帧引导）+ 接缝 + 合并 + manifest |
 | `DirectorDeck_M3_数字人锁音.json` | 真锁音 + 二采 |
 | `DirectorDeck_M4_锁音无损.json` | 源音频逐样点无损混流 |
+| `DirectorDeck_M5_latent续写.json` | 两段 latent 尾 token 续写（0.2.1，最快） |
+
+> 0.2.1 起续写多了一个更快的模式：把生成器的 `continuity` 选成 **`latent_tail`**，
+> 第 2 段会直接搬上一段 latent 的尾部 token（mask=0 钉住），省掉 RGB 解码/编码的绕路。
+> 可直接跑的 API 示例：`examples/m5_latent_chain_api.json`（画布版画法相同，把 continuity 换成 latent_tail 即可）。
 
 ## 设计要点（已定稿）
 

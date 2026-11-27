@@ -168,3 +168,59 @@ def validate_length(value: int, *, what: str = "length") -> int:
     if not is_valid_length(value):
         raise error("DD-E020", f"{what}={value} 不是 17k+5（如 124、158、175、243、362）")
     return int(value)
+
+
+# ---------------------------------------------------------------- latent 尾帧续写用
+# H3 的视频 latent 里，一个“时间 token”覆盖的像素帧数不是固定的：
+# 每 5 个 token 一个循环，覆盖 (1,4,4,4,4) 帧。latent 尾帧续写要把上一段
+# 最后 head 帧对应的一整串 token 搬进新 latent，所以必须按这个表算边界。
+FRAME_PER_TOKEN = (1, 4, 4, 4, 4)
+
+
+def video_latent_tokens(frame_count: int) -> int:
+    """像素帧数 -> 视频 latent 的时间 token 数（H3 的公式）。"""
+    frame_count = int(frame_count)
+    return 2 if frame_count <= 5 else ((frame_count - 5) // 17) * 5 + 2
+
+
+def token_frame_spans(token_count: int) -> list[int]:
+    """每个时间 token 覆盖多少像素帧。"""
+    return [FRAME_PER_TOKEN[i % 5] for i in range(max(0, int(token_count)))]
+
+
+def token_frame_boundaries(token_count: int) -> list[int]:
+    """累积边界：boundaries[k] = 前 k 个 token 覆盖的总帧数（长度 token_count+1）。
+
+    例如 47 个 token 的最后一项是 158，代表 158 帧。
+    """
+    boundaries = [0]
+    for span in token_frame_spans(token_count):
+        boundaries.append(boundaries[-1] + span)
+    return boundaries
+
+
+def tail_token_boundary(sample_frames: int, head_frames: int) -> tuple[int, int]:
+    """算“尾帧续写”要搬多少个 token、实际遮住多少帧。
+
+    为什么不能正好等于 head_frames：token 边界不一定落在任意帧上，
+    只能取“最接近且不超过目标”的 token 边界；实际遮住的帧数会 ≥ head（最多多 3 帧）。
+    返回 (k0, masked_frames)：搬 token[k0:]，新视频前 masked_frames 帧来自上一段。
+
+    举例（5 秒段、head=22）：sample=158、token 47 个，边界里正好有 136，
+    于是 k0=40、masked=22，和请求一致。
+    """
+    sample_frames = int(sample_frames)
+    head_frames = max(1, int(head_frames))
+    token_count = video_latent_tokens(sample_frames)
+    boundaries = token_frame_boundaries(token_count)
+    target = sample_frames - head_frames
+    # 找最后一个 <= target 的边界（下标 k 就代表搬 token[k:]）。
+    k0 = 0
+    for index, boundary in enumerate(boundaries):
+        if boundary <= target:
+            k0 = index
+        else:
+            break
+    k0 = max(0, min(k0, token_count))
+    masked_frames = sample_frames - boundaries[k0]
+    return k0, masked_frames

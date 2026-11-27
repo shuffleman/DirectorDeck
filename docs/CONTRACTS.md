@@ -171,7 +171,7 @@
   "schema": "DIRECTOR_SEGMENT@1",
   "index": 1, "chain_key": "sha1:...",
   "resolved": { "assets": {...}, "brief": {...}, "cast": {...}, "config": {...}, "bundle_id": "...",
-                "continuity": "start|guide_tail|none" },
+                "continuity": "start|guide_tail|latent_tail|none" },
   "frames": 124, "head": 0, "delivery": 124, "sample": 124,
   "images": "<IMAGE socket 附带>", "audio": "<AUDIO socket 附带>",
   "video_path": "DirectorDeck/xxx/seg_001.mp4",
@@ -213,7 +213,7 @@
 | `brief_policy` | `inherit / replace` | |
 | `cast_policy` | `inherit / replace / merge_by_character` | |
 | `config_policy` | `inherit / overrides` | `overrides` 需连 `DIRECTOR_CONFIG_OVERRIDE` |
-| `continuity` | `start / guide_tail / none` | 第 1 段必须 `start`；之后 `guide_tail` 或 `none` |
+| `continuity` | `start / guide_tail / latent_tail / none` | 第 1 段必须 `start`；之后 `guide_tail`（RGB 尾帧引导）或 `latent_tail`（latent 尾 token 续写，0.2.1 起）或 `none` |
 | `bundle_policy` | `provided / inherit` | 第 1 段推荐 `provided`（也可 `inherit` 取全局默认）；之后必须 `inherit` |
 
 > **基线（baseline）定义**：解析字段的"沿用"目标 = 上一段 resolved 结果；**第 1 段没有上一段时 = 链首全局默认**。
@@ -248,7 +248,7 @@
    - `clear`：空 bundles
 5. **brief**：`inherit`→previous.brief（首段→`defaults.brief`，可为空）；`replace`→必须连接。
 6. **cast**：同上；`merge_by_character` 按 `role.id` 覆盖（`DD-E007` 角色不存在时警告）。
-7. **continuity**：`index==0` 只允许 `start`；`>0` 允许 `guide_tail`（需要 previous）/`none`；`guide_tail` 且 previous 为空 → `DD-E008`。
+7. **continuity**：`index==0` 只允许 `start`；`>0` 允许 `guide_tail`（RGB 尾帧+尾音 AddGuide）/ `latent_tail`（直接搬上一段 latent 尾部 token 并 mask=0）/ `none`；两种“接上一段”模式在 previous 为空时都报 `DD-E008`。
 8. 生成 `resolved_hash = sha1(canonical_json(resolved))`，供缓存使用。
 
 ---
@@ -318,7 +318,7 @@ segment_fingerprint = sha1(canonical_json({
 | 5 | `DirectorDeck_SegmentBrief` | BRIEF | text、seconds、dialogue（多行）、refs |
 | 6 | `DirectorDeck_VoiceLock` | CAST + STRING | roles（多行“角色: 槽号, 起始秒”）、lock_audio、audio_1..3（可选 AUDIO） |
 | 7 | `DirectorDeck_FramePlanner` | PLAN + STRING | script、config、keep_full（可选） |
-| 8 | `DirectorDeck_ContinuityGuide` | CONDITIONING/IMAGE | **M2 已并入 DirectorTake**：`continuity=guide_tail` + `previous_segment` 即自动取尾帧/尾音做 AddGuide；独立节点等 M3 latent 续写再做 |
+| 8 | `DirectorDeck_ContinuityGuide` | CONDITIONING/IMAGE | **已并入 DirectorTake**：`continuity=guide_tail` 走 RGB 尾帧+尾音 AddGuide；`continuity=latent_tail` 直接搬上一段 latent 尾部 token（0.2.1），都不需要独立节点 |
 | 9 | `DirectorDeck_DirectorTake` | SEGMENT + IMAGE + AUDIO | bundle_policy、bundle、config_policy、assets_policy、assets、brief_policy、brief、cast_policy、continuity、segment_index、seed + optional: previous_segment |
 | 10 | `DirectorDeck_SeamFixer` | IMAGE + STRING | prev_images、cur_images、cur_head + optional: enabled、window、max_add、gain_limit |
 | 11 | `DirectorDeck_SegmentCache` | SEGMENT + STRING | segment、mode(status/store/clear)、scope（可选） |
@@ -394,6 +394,7 @@ segment_fingerprint = sha1(canonical_json({
 | `DirectorDeck_M2_三段链.json` | `m2_chain_api.json` |
 | `DirectorDeck_M3_数字人锁音.json` | `m3_digital_human_api.json` |
 | `DirectorDeck_M4_锁音无损.json` | `m4_lock_finalcut_api.json` |
+| `DirectorDeck_M5_latent续写.json` | `m5_latent_chain_api.json`（0.2.1） |
 
 生成与校验：`python tools/make_ui_workflows.py [server]` —— 从运行中 ComfyUI 拉 `object_info`，
 按真实控件顺序生成 `widgets_values`，再用 `ui_to_api()` 反向还原并与 API 示例逐输入比对

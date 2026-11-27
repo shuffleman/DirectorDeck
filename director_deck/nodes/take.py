@@ -283,9 +283,24 @@ class DirectorDeckTake:
                         "samples": int(track.shape[-1]),
                     }
 
+        # 5.8) latent 尾帧续写：把上一段 latent 的尾部 token 直接搬过来，mask=0 钉住。
+        #      和 RGB 尾帧引导相比：省掉“解码成图再编码”的绕路，也不会有 graph break，
+        #      更快、也更接近模型原生的续写方式。
+        handoff_info = {"mode": "none"}
+        head_frames = plan.head
+        if resolved.continuity == "latent_tail":
+            if prev_snapshot is None or prev_snapshot.get("latent_handoff") is None:
+                raise error("DD-E008",
+                            "continuity=latent_tail 但上一段的 latent 数据不在内存"
+                            "（可能重启过 ComfyUI），请重跑上一段")
+            latent, handoff_info = av_latent.latent_handoff(
+                latent, prev_snapshot["latent_handoff"], int(plan.head),
+                lock_audio_only=bool(lock_info.get("applied")))
+            head_frames = int(handoff_info["masked_frames"])
+
         # 6) 续写引导：把上一段 delivery 的尾巴（head 帧）钉到本段第 0 帧，
         #    音轨也钉一段，这样画面和声音都能接上。
-        guide_info = {"used": False, "head": plan.head, "audio": False}
+        guide_info = {"used": False, "head": head_frames, "audio": False}
         if plan.head > 0 and resolved.continuity == "guide_tail":
             tail_images = prev_snapshot["images_tail"]
             if tail_images.shape[0] < plan.head:
@@ -303,6 +318,12 @@ class DirectorDeckTake:
                 cond = h3.add_guide(bundle, cond, latent, image=tail_images,
                                     audio=tail_audio, frame_idx=0)
                 guide_info.update(used=True, audio=True)
+
+        # latent 续写的“引导”在 latent 里已经完成，这里只补一个可读的元数据。
+        if resolved.continuity == "latent_tail":
+            guide_info = {"used": True, "mode": "latent_tail",
+                          "head": head_frames,
+                          "audio": not lock_info.get("applied")}
 
         # 7) 采样 + 解码。
         final_seed = self._resolve_seed(config, seed, int(segment_index))
@@ -325,32 +346,40 @@ class DirectorDeckTake:
 
         # 8) 接缝曝光修正：拿上一段尾巴和本段交付帧开头比，修本段交付部分。
         seam_info = None
-        if plan.head > 0 and prev_snapshot is not None and config.get("seam_enabled", True):
+        if head_frames > 0 and prev_snapshot is not None and config.get("seam_enabled", True):
             window = int(config.get("seam_window", seam.WINDOW_DEFAULT))
             prev_tail = prev_snapshot.get("seam_tail")
             if prev_tail is not None and prev_tail.shape[0] >= 2:
-                cur_head_means = _frame_means(images[plan.head:plan.head + window])
+                cur_head_means = _frame_means(images[head_frames:head_frames + window])
                 seam_info = seam.exposure_plan(
                     _frame_means(prev_tail), cur_head_means, window=window,
                     max_add=float(config.get("seam_max_add", seam.MAX_ADD_DEFAULT)),
                     gain_limit=float(config.get("seam_gain_limit", seam.GAIN_LIMIT_DEFAULT)))
                 if seam_info.get("apply"):
                     fixed = images.clone()
-                    adjusted = (fixed[plan.head:] * float(seam_info["gain"])
+                    adjusted = (fixed[head_frames:] * float(seam_info["gain"])
                                 + float(seam_info["offset"])).clamp(0.0, 1.0)
-                    fixed[plan.head:] = adjusted
+                    fixed[head_frames:] = adjusted
                     images = fixed
 
-        # 9) 把本段的运行期数据放进仓库：下一段靠它拿尾帧/尾音。
+        # 9) 把本段的运行期数据放进仓库：下一段靠它拿尾帧/尾音/latent 尾。
         store_key = hashlib.sha1(
             f"{resolved.hash}|{prompt}|{actual_seed}|{tuple(images.shape)}"
             .encode("utf-8")).hexdigest()[:24]
+        # latent 尾帧续写要用的数据：采样后的整条 latent（很小，几 MB）留一份。
+        video_latent, audio_latent = av_latent.split_av(sampled)
         segment_store.put(store_key, {
             # 尾帧最多留 56 帧（衔接头上限），下一段按自己的 head 取用。
             "images_tail": images[-min(56, images.shape[0]):].clone(),
             # 接缝匹配只看最后 24 帧。
             "seam_tail": images[-min(24, images.shape[0]):].clone(),
             "audio_full": audio,
+            # latent 尾帧续写：下一段会直接搬这里的尾部 token。
+            "latent_handoff": {
+                "video": video_latent.detach().float().cpu(),
+                "audio": audio_latent.detach().float().cpu(),
+                "sample": int(images.shape[0]),
+            },
             # 锁音时的源音轨（成片可直接混流，做到逐样点无损）。
             "lock_source_audio": lock_source_audio,
             "config": resolved.config,
@@ -370,8 +399,8 @@ class DirectorDeckTake:
             "width": width,
             "height": height,
             "frames": int(images.shape[0]),
-            "head": plan.head,
-            "delivery": plan.delivery,
+            "head": head_frames,
+            "delivery": int(images.shape[0]) - head_frames,
             "sample": plan.sample,
             "seed": actual_seed,
             "sigmas": sampled.get("_director_sigmas"),
@@ -379,6 +408,7 @@ class DirectorDeckTake:
             "preview": bool(config.get("preview", True)),
             "store_key": store_key,
             "guide": guide_info,
+            "handoff": handoff_info,
             "lock": lock_info,
             "seam": seam_info,
         }
@@ -397,6 +427,6 @@ class DirectorDeckTake:
             print(f"[DirectorDeck] 段元数据落盘失败：{exc}")
 
         print(f"[DirectorDeck] 第 {segment_index} 段完成：{result['frames']} 帧，"
-              f"{elapsed:.1f}s，seed={actual_seed}，guide={guide_info['used']}，"
+              f"{elapsed:.1f}s，seed={actual_seed}，guide={guide_info.get('mode', guide_info['used'])}，"
               f"lock={lock_info.get('applied')}，seam={seam_info and seam_info.get('apply')}")
         return {"ui": ui, "result": (result, images, audio)}

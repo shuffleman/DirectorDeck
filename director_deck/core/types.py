@@ -72,8 +72,10 @@ CAST_POLICIES = ("inherit", "replace", "merge_by_character")
 # 配置：沿用 / 只覆盖白名单里的安全字段。
 CONFIG_POLICIES = ("inherit", "overrides")
 
-# 画面衔接：第 1 段只能 start；之后要么接着上一段尾巴（guide_tail），要么明确断链（none）。
-CONTINUITY_MODES = ("start", "guide_tail", "none")
+# 画面衔接：第 1 段只能 start；之后要么接着上一段尾巴（guide_tail=RGB 尾帧引导），
+# 要么直接用上一段 latent 的尾部 token 做续写（latent_tail，更快、更接近原生续写），
+# 要么明确断链（none）。
+CONTINUITY_MODES = ("start", "guide_tail", "latent_tail", "none")
 
 # 模型只能链首提供（provided），后面段落只能继承（inherit）。
 # 为什么？换模型等于换了一条链，latent 空间都对不上了，硬接只会出鬼片。

@@ -315,6 +315,45 @@ def m4_lock_finalcut() -> dict:
     return graph
 
 
+def m5_latent_chain() -> dict:
+    """M5.5 示例：latent 尾帧续写（两段）。
+
+    第 2 段 continuity=latent_tail：生成器直接把上一段 latent 的尾部 token
+    搬进新 latent 开头并设 noise_mask=0，省掉 RGB 解码/编码的绕路。
+    """
+    graph = {
+        "1": loader_node(),
+        "2": config_node(),
+        "3": script_node(),
+        "10": take_node("10", "1", "2", "3"),
+        "11": {
+            "class_type": "DirectorDeck_DirectorTake",
+            "inputs": {
+                "bundle": ["1", 0], "config": ["2", 0], "script": ["3", 0],
+                "segment_index": 2, "bundle_policy": "inherit",
+                "config_policy": "inherit", "assets_policy": "inherit",
+                "brief_policy": "inherit", "cast_policy": "inherit",
+                "continuity": "latent_tail", "seed": 0,
+                "previous_segment": ["10", 0],
+            },
+        },
+        "20": {"class_type": "DirectorDeck_FinalCut",
+               "inputs": {"segment_1": ["10", 0], "images_1": ["10", 1],
+                          "audio_1": ["10", 2],
+                          "segment_2": ["11", 0], "images_2": ["11", 1],
+                          "audio_2": ["11", 2],
+                          "save_manifest": True, "audio_from_source": False}},
+        "21": {"class_type": "CreateVideo",
+               "inputs": {"images": ["20", 0], "fps": 24.0, "audio": ["20", 1],
+                          "codec": "h264"}},
+        "22": {"class_type": "SaveVideo",
+               "inputs": {"video": ["21", 0],
+                          "filename_prefix": "DirectorDeck/M5_latent_chain",
+                          "format": "auto", "codec": "auto"}},
+    }
+    return graph
+
+
 def main() -> int:
     os.makedirs(EXAMPLE_DIR, exist_ok=True)
     for name, graph in (("m1_single_segment_api", single()),
@@ -322,7 +361,8 @@ def main() -> int:
                         ("m2_chain_api", m2_chain()),
                         ("m2_reroll_seg2_api", m2_reroll()),
                         ("m3_digital_human_api", m3_digital_human()),
-                        ("m4_lock_finalcut_api", m4_lock_finalcut())):
+                        ("m4_lock_finalcut_api", m4_lock_finalcut()),
+                        ("m5_latent_chain_api", m5_latent_chain())):
         path = os.path.join(EXAMPLE_DIR, name + ".json")
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(graph, fh, ensure_ascii=False, indent=2)

@@ -388,6 +388,51 @@ def script_node(node_id=3, pos=(0, 1260)) -> dict:
                 title="③ 剧本加载器")
 
 
+def make_m5_latent(oi):
+    """M5.5：两段 latent 尾帧续写（第 2 段 continuity=latent_tail）。"""
+    nodes = [
+        loader_node(), config_node(), script_node(),
+        take_node(10, (420, 0), 1, "provided", "start", assets_policy="clear",
+                  title="第 1 段（head=0）"),
+        dict(id=11, type="DirectorDeck_DirectorTake", pos=[840, 0], size=[380, 460],
+             values={"segment_index": 2, "bundle_policy": "inherit",
+                     "config_policy": "inherit", "assets_policy": "inherit",
+                     "brief_policy": "inherit", "cast_policy": "inherit",
+                     "continuity": "latent_tail", "seed": 0},
+             links_in={"bundle": (1, 0), "config": (2, 0), "script": (3, 0),
+                       "previous_segment": (10, 0)},
+             title="第 2 段（latent 尾 token 续写）"),
+        dict(id=20, type="DirectorDeck_FinalCut", pos=[1260, 0], size=[420, 460],
+             values={"save_manifest": True, "audio_from_source": False},
+             links_in={"segment_1": (10, 0), "images_1": (10, 1), "audio_1": (10, 2),
+                       "segment_2": (11, 0), "images_2": (11, 1), "audio_2": (11, 2)},
+             title="合并（自动裁衔接头）"),
+        dict(id=21, type="CreateVideo", pos=[1700, 0], size=[320, 200],
+             values={"fps": 24.0, "bit_depth": 8, "color_space": "sRGB",
+                     "chroma_subsampling": "auto", "codec": "h264"},
+             links_in={"images": (20, 0), "audio": (20, 1)}),
+        dict(id=22, type="SaveVideo", pos=[1700, 240], size=[360, 200],
+             values={"filename_prefix": "DirectorDeck/M5_latent_chain",
+                     "format": "auto", "format.codec": "auto", "codec": "auto"},
+             links_in={"video": (21, 0)}),
+        dict(id=30, type="Note", pos=[420, 520], size=[620, 260],
+             text="【M5.5 latent 尾帧续写】\n"
+                  "第 2 段的 continuity 选 latent_tail：生成器直接把上一段 latent 的尾部 token\n"
+                  "搬进新 latent 开头并设 noise_mask=0，省掉 RGB 解码/编码的绕路。\n"
+                  "实测同规格段比 RGB 引导快约 1/3（17.1s/it vs 25.5s/it），边界亮度差 0.0038。\n"
+                  "想要最高画质稳定可继续用 guide_tail；想快/想更贴原生续写用 latent_tail。"),
+    ]
+    groups = [
+        {"title": "模型 / 配置 / 剧本", "bounding": [-20, -20, 400, 1480],
+         "color": "#3f789e", "font_size": 22, "flags": {}},
+        {"title": "两段（latent 续写）", "bounding": [400, -20, 820, 520],
+         "color": "#8A8", "font_size": 22, "flags": {}},
+        {"title": "合并 / 输出", "bounding": [1240, -20, 840, 500],
+         "color": "#b58b2a", "font_size": 22, "flags": {}},
+    ]
+    return build_ui(oi, nodes, groups, "DirectorDeck_M5_latent续写")
+
+
 def make_m1(oi):
     nodes = [
         loader_node(), config_node(), script_node(),
@@ -641,6 +686,7 @@ WORKFLOWS = [
     ("m2_chain_api", make_m2),
     ("m3_digital_human_api", make_m3),
     ("m4_lock_finalcut_api", make_m4),
+    ("m5_latent_chain_api", make_m5_latent),
 ]
 
 

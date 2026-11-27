@@ -103,6 +103,20 @@ class ExampleTest(unittest.TestCase):
         # M4 的关键：合并时直接用锁音源轨，做到无损。
         self.assertTrue(cut["inputs"]["audio_from_source"])
 
+    def test_m5_latent_chain(self):
+        graph = load("m5_latent_chain_api.json")
+        self._check(graph)
+        takes = [n for n in graph.values()
+                 if n["class_type"] == "DirectorDeck_DirectorTake"]
+        self.assertEqual(len(takes), 2)
+        second = next(n for n in takes if n["inputs"]["segment_index"] == 2)
+        self.assertEqual(second["inputs"]["continuity"], "latent_tail")
+        self.assertIn("previous_segment", second["inputs"])
+        self.assertEqual(second["inputs"]["bundle_policy"], "inherit")
+        cut = next(n for n in graph.values()
+                   if n["class_type"] == "DirectorDeck_FinalCut")
+        self.assertIn("segment_2", cut["inputs"])
+
 
 if __name__ == "__main__":
     unittest.main()
