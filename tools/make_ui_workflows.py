@@ -433,6 +433,60 @@ def make_m5_latent(oi):
     return build_ui(oi, nodes, groups, "DirectorDeck_M5_latent续写")
 
 
+def make_m6_mix(oi):
+    """M6：多角色锁音 + 自动 ducking（两路音频按优先级混音）。"""
+    nodes = [
+        loader_node(), config_node(), script_node(),
+        dict(id=5, type="LoadAudio", pos=[420, 0], size=[340, 90],
+             values={"audio": "mix_a.wav"}, title="角色 A（440Hz，0~2.5s）"),
+        dict(id=6, type="LoadAudio", pos=[420, 120], size=[340, 90],
+             values={"audio": "mix_b.wav"}, title="角色 B（880Hz，2.0~5.17s）"),
+        dict(id=7, type="DirectorDeck_VoiceLock", pos=[420, 250], size=[360, 380],
+             values={"roles": "A: 1, 0.0, 0, 2\nB: 2, 0.0, 0, 1",
+                     "lock_audio": True, "mix_mode": "priority",
+                     "duck_db": -8.0, "attack_ms": 40, "release_ms": 200},
+             links_in={"audio_1": (5, 0), "audio_2": (6, 0)},
+             title="锁音 + 混音（A 优先级 2，B 优先级 1）"),
+        dict(id=10, type="DirectorDeck_DirectorTake", pos=[840, 0], size=[380, 520],
+             values={"segment_index": 1, "bundle_policy": "provided",
+                     "config_policy": "inherit", "assets_policy": "clear",
+                     "brief_policy": "inherit", "cast_policy": "replace",
+                     "continuity": "start", "seed": 0, "cache_mode": "auto"},
+             links_in={"bundle": (1, 0), "config": (2, 0), "script": (3, 0),
+                       "cast": (7, 0)}),
+        dict(id=40, type="DirectorDeck_FinalCut", pos=[1260, 0], size=[420, 460],
+             values={"save_manifest": True, "audio_from_source": True},
+             links_in={"segment_1": (10, 0), "images_1": (10, 1), "audio_1": (10, 2)},
+             title="合并（直接混源音轨）"),
+        dict(id=41, type="CreateVideo", pos=[1700, 0], size=[320, 200],
+             values={"fps": 24.0, "bit_depth": 8, "color_space": "sRGB",
+                     "chroma_subsampling": "auto", "codec": "h264"},
+             links_in={"images": (40, 0), "audio": (40, 1)}),
+        dict(id=42, type="SaveVideo", pos=[1700, 240], size=[360, 200],
+             values={"filename_prefix": "DirectorDeck/M6_mix_rules",
+                     "format": "auto", "format.codec": "auto", "codec": "auto"},
+             links_in={"video": (41, 0)}),
+        dict(id=43, type="SaveAudio", pos=[1700, 480], size=[360, 110],
+             values={"filename_prefix": "DirectorDeck/M6_mix_source"},
+             links_in={"audio": (40, 1)}, title="混音后的源音轨（可逐样点分析）"),
+        dict(id=50, type="Note", pos=[840, 560], size=[640, 260],
+             text="【M6 多角色锁音 ducking】\n"
+                  "两个角色同时说话时，priority 模式让优先级高的 A 保持原样，\n"
+                  "B 在重叠区被压低 duck_db（默认 -8dB），attack/release 平滑避免爆音。\n"
+                  "混音规则直接在锁音器上选：auto_duck / priority / sum；\n"
+                  "每路还可以单独设增益（角色行第 3 参数）和优先级（第 4 参数）。"),
+    ]
+    groups = [
+        {"title": "模型 / 配置 / 剧本", "bounding": [-20, -20, 400, 1480],
+         "color": "#3f789e", "font_size": 22, "flags": {}},
+        {"title": "多角色锁音与混音", "bounding": [400, -20, 420, 660],
+         "color": "#8A8", "font_size": 22, "flags": {}},
+        {"title": "生成 / 输出", "bounding": [820, -20, 1260, 580],
+         "color": "#b58b2a", "font_size": 22, "flags": {}},
+    ]
+    return build_ui(oi, nodes, groups, "DirectorDeck_M6_多角色混音")
+
+
 def make_m1(oi):
     nodes = [
         loader_node(), config_node(), script_node(),
@@ -687,6 +741,7 @@ WORKFLOWS = [
     ("m3_digital_human_api", make_m3),
     ("m4_lock_finalcut_api", make_m4),
     ("m5_latent_chain_api", make_m5_latent),
+    ("m6_mix_rules_api", make_m6_mix),
 ]
 
 

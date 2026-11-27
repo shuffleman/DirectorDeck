@@ -138,17 +138,22 @@
   "schema": "DIRECTOR_CAST@1",
   "roles": [
     {"id": "girl", "name": "女主",
+     "start": 0.0, "gain_db": 0.0, "priority": 2,
      "voice": {"kind": "audio", "path": "DirectorDeck/demo/voice_girl.wav", "start": 0.0, "end": 5.0},
      "face_slot": 1}
   ],
-  "lock_audio": true
+  "lock_audio": true,
+  "mix": {"mode": "auto_duck", "duck_db": -8.0, "attack_ms": 60, "release_ms": 200}
 }
 ```
 
 - `voice.kind`：`audio`（真锁音，需自研节点）/ `tts`（M3 后）/ `none`（生成音频）。
 - `lock_audio=true` 时该角色音轨以 **noise_mask=0** 锁进 AV latent。
+- **多角色混音（0.2.3）**：`mix.mode` = `auto_duck`（逐帧最响者不被压）/ `priority`（按 `priority` 值）/
+  `sum`（只叠加）；`duck_db` 是被压分贝，`attack_ms`/`release_ms` 是压低/恢复时间；
+  每路还有 `gain_db`（角色行第 3 参）与 `priority`（第 4 参）。
 - **运行期字段**：`roles[i].audio_data`（AUDIO 张量）只在进程内传递，写盘/进 JSON 时会由
-  `policy._serializable_cast()` 剔除；落盘的 cast 只有 `id/name/start/voice`。
+  `policy._serializable_cast()` 剔除；落盘的 cast 只有 `id/name/start/gain_db/priority/voice` 和 `mix`。
 - 锁音保真的验收口径：用**包络相关 + 频带结构**，不用样点相关——H3 的音频 VAE 是
   神经编解码器，解码会重建波形相位。
 
@@ -334,7 +339,7 @@ segment_fingerprint = "sha1:" + sha1(canonical_json({
 | 3 | `DirectorDeck_AssetShelf` | ASSETS | slots 1..9（IMAGE 可选）、audio_1..3（AUDIO 可选）、@引用说明 |
 | 4 | `DirectorDeck_ScriptDesk` | SCRIPT | text、mode、default_seconds、max_segments、keep_header |
 | 5 | `DirectorDeck_SegmentBrief` | BRIEF | text、seconds、dialogue（多行）、refs |
-| 6 | `DirectorDeck_VoiceLock` | CAST + STRING | roles（多行“角色: 槽号, 起始秒”）、lock_audio、audio_1..3（可选 AUDIO） |
+| 6 | `DirectorDeck_VoiceLock` | CAST + STRING | roles（多行“角色: 槽号, 起始秒, 增益dB, 优先级”）、lock_audio、mix_mode(auto_duck/priority/sum)、duck_db、attack_ms、release_ms、audio_1..3（可选 AUDIO） |
 | 7 | `DirectorDeck_FramePlanner` | PLAN + STRING | script、config、keep_full（可选） |
 | 8 | `DirectorDeck_ContinuityGuide` | CONDITIONING/IMAGE | **已并入 DirectorTake**：`continuity=guide_tail` 走 RGB 尾帧+尾音 AddGuide；`continuity=latent_tail` 直接搬上一段 latent 尾部 token（0.2.1），都不需要独立节点 |
 | 9 | `DirectorDeck_DirectorTake` | SEGMENT + IMAGE + AUDIO | bundle、config、script、continuity、segment_index、seed、cache_mode(auto/off/reroll) + optional: previous_segment、assets、brief、cast |

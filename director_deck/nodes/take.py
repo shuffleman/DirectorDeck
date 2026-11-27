@@ -388,7 +388,8 @@ class DirectorDeckTake:
                     plan.timeline_start, plan.head, plan.sample)
                 vae_rate = int(getattr(bundle["audio_vae"], "audio_sample_rate", 32000))
                 track = av_latent.build_audio_track(
-                    roles_with_audio, seg_start, seg_end, vae_rate)
+                    roles_with_audio, seg_start, seg_end, vae_rate,
+                    mix=resolved.cast.get("mix"))
                 if float(track.abs().max()) > 0:
                     latent, locked_audio_latent = av_latent.lock_audio(
                         latent, bundle["audio_vae"], track, vae_rate)
@@ -400,6 +401,7 @@ class DirectorDeckTake:
                         "roles": [r.get("name") for r in roles_with_audio],
                         "window": [round(seg_start, 3), round(seg_end, 3)],
                         "samples": int(track.shape[-1]),
+                        "mix": resolved.cast.get("mix"),
                     }
 
         # 5.8) latent 尾帧续写：把上一段 latent 的尾部 token 直接搬过来，mask=0 钉住。

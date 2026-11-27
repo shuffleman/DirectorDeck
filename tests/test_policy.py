@@ -209,9 +209,11 @@ class SerializableTest(unittest.TestCase):
         # 锁音 cast 里带运行期音频张量（用 object 模拟不可序列化对象），
         # canonical 必须把它摘掉，否则写 history 会炸。
         defaults["cast"] = {"roles": [{"id": "girl", "name": "女主", "start": 0.0,
+                                       "gain_db": -3.0, "priority": 2,
                                        "voice": {"kind": "audio", "slot": 1},
                                        "audio_data": object()}],
-                            "lock_audio": True}
+                            "lock_audio": True,
+                            "mix": {"mode": "priority", "duck_db": -8.0}}
         resolved = policy.resolve_segment(
             index=0, policies=full_policies(), sockets={"bundle": fake_bundle},
             defaults=defaults)
@@ -220,6 +222,9 @@ class SerializableTest(unittest.TestCase):
         self.assertIn("fl2va_model", text)
         self.assertIn("girl", text)
         self.assertNotIn("audio_data", text)
+        # 混音规则/增益/优先级是纯数据，必须保留（影响声音，也影响缓存指纹）。
+        self.assertIn("priority", text)
+        self.assertIn("duck_db", text)
 
 
 class HashTest(unittest.TestCase):

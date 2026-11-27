@@ -1,5 +1,5 @@
 {
-  "id": "f8184903-54fc-4545-9c78-fe8bf148e399",
+  "id": "d78307ce-821f-45cf-ad0e-d753c9d0aef5",
   "revision": 0,
   "last_node_id": 50,
   "last_link_id": 12,
@@ -620,6 +620,42 @@
           "link": null
         },
         {
+          "localized_name": "mix_mode",
+          "name": "mix_mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "mix_mode"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "duck_db",
+          "name": "duck_db",
+          "type": "FLOAT",
+          "widget": {
+            "name": "duck_db"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "attack_ms",
+          "name": "attack_ms",
+          "type": "INT",
+          "widget": {
+            "name": "attack_ms"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "release_ms",
+          "name": "release_ms",
+          "type": "INT",
+          "widget": {
+            "name": "release_ms"
+          },
+          "link": null
+        },
+        {
           "localized_name": "audio_1",
           "name": "audio_1",
           "type": "AUDIO",
@@ -661,7 +697,11 @@
       },
       "widgets_values": [
         "女主: 1, 0.0",
-        true
+        true,
+        "auto_duck",
+        -8.0,
+        60,
+        200
       ]
     },
     {
@@ -1238,7 +1278,7 @@
       5,
       0,
       6,
-      2,
+      6,
       "AUDIO"
     ],
     [

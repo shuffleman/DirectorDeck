@@ -122,18 +122,51 @@ def encode_audio_latent(audio_vae, waveform: torch.Tensor, sample_rate: int,
     return _fit_time(latent, int(target_t))
 
 
-def build_audio_track(roles: list[dict], seg_start: float, seg_end: float,
-                      sample_rate: int = 32000) -> torch.Tensor:
-    """把多个角色的配音按时间轴铺成“本段一条音轨”。
+def _frame_energies(track: torch.Tensor, frame_size: int) -> list[float]:
+    """逐帧 RMS（给混音规则判断“谁在说话”）。"""
+    mono = track.mean(dim=1).reshape(-1)
+    energies = []
+    for start in range(0, mono.shape[0], max(1, frame_size)):
+        chunk = mono[start:start + frame_size]
+        if chunk.numel() == 0:
+            break
+        energies.append(float(torch.sqrt((chunk * chunk).mean()).item()))
+    return energies
 
-    规则：
-    - 每个角色有 audio_data（波形）+ start（在整条时间轴上的起点，秒）；
-    - 用 core.audio.clip_window 算它在段内的偏移和长度；
-    - 多角色重叠就相加（先不做智能 ducking，M4 再做）；
-    - 最后削一下峰值，避免叠加后爆音。
+
+def _apply_gain_envelope(track: torch.Tensor, gains: list[float], frame_size: int) -> torch.Tensor:
+    """把“逐帧增益”线性插值到采样点再乘上去（避免台阶式爆音）。"""
+    if not gains:
+        return track
+    length = int(track.shape[-1])
+    envelope = torch.tensor(gains, dtype=track.dtype).view(1, 1, -1)
+    upsampled = torch.nn.functional.interpolate(
+        envelope, size=length, mode="linear", align_corners=False).reshape(length)
+    return track * upsampled
+
+
+def build_audio_track(roles: list[dict], seg_start: float, seg_end: float,
+                      sample_rate: int = 32000, mix: dict | None = None) -> torch.Tensor:
+    """把多个角色的配音按时间轴铺成“本段一条音轨”，并按混音规则处理。
+
+    混音规则（`mix`，来自 VoiceLock 节点）：
+    - `mode`：`auto_duck`（每帧最响的角色不被压，其他同帧发言者降 duck_db）/
+      `priority`（按角色 priority 决定谁不被压）/ `sum`（只叠加，不 duck）；
+    - `duck_db`：被压多少分贝（默认 -8dB ≈ 0.398 倍）；
+    - `attack_ms` / `release_ms`：压下去/恢复的速度，避免爆音；
+    - 每路还可单独设 `gain_db`（角色行里的第 3 个参数）和 `priority`（第 4 个）。
+    最后统一做限幅，避免多路叠加削波。
     """
+    mix = dict(mix or {})
+    mode = str(mix.get("mode") or "auto_duck")
+    duck_db = float(mix.get("duck_db", audio_math.DUCK_DB_DEFAULT))
+    attack_ms = float(mix.get("attack_ms", audio_math.ATTACK_MS_DEFAULT))
+    release_ms = float(mix.get("release_ms", audio_math.RELEASE_MS_DEFAULT))
+    frame_ms = float(mix.get("frame_ms", audio_math.MIX_FRAME_MS))
     length = max(1, audio_math.samples_for(seg_end - seg_start, sample_rate))
-    track = torch.zeros((1, 2, length), dtype=torch.float32)
+
+    tracks: list[torch.Tensor] = []
+    used_roles: list[dict] = []
     for role in roles or []:
         data = role.get("audio_data")
         if not data:
@@ -157,11 +190,41 @@ def build_audio_track(roles: list[dict], seg_start: float, seg_end: float,
                     length - dst_i0)
         if count <= 0:
             continue
+        track = torch.zeros((1, 2, length), dtype=torch.float32)
         track[..., dst_i0:dst_i0 + count] += waveform[..., src_i0:src_i0 + count][..., :count]
-    peak = float(track.abs().max()) if track.numel() else 0.0
-    if peak > 1.0:
-        track = track / peak
-    return track
+        # 每路增益（dB）。
+        gain_db = float(role.get("gain_db") or 0.0)
+        if abs(gain_db) > 1e-6:
+            track = track * audio_math.db_to_linear(gain_db)
+        # 素材切入/切出做个 8ms 淡入淡出，避免“咔哒”。
+        fade = min(int(sample_rate * 0.008), max(1, count // 4))
+        if count > 2 * fade:
+            ramp = torch.linspace(0.0, 1.0, fade, dtype=torch.float32)
+            track[..., dst_i0:dst_i0 + fade] *= ramp
+            track[..., dst_i0 + count - fade:dst_i0 + count] *= ramp.flip(0)
+        tracks.append(track)
+        used_roles.append(role)
+
+    if not tracks:
+        return torch.zeros((1, 2, length), dtype=torch.float32)
+
+    # 逐帧能量 -> 混音规则 -> 逐路增益包络。
+    frame_size = max(1, int(round(sample_rate * frame_ms / 1000.0)))
+    energies = [_frame_energies(track, frame_size) for track in tracks]
+    priorities = [int(role.get("priority") or 0) for role in used_roles]
+    gains = audio_math.mix_gains(
+        energies, priorities, mode=mode, duck_db=duck_db,
+        attack_ms=attack_ms, release_ms=release_ms, frame_ms=frame_ms)
+
+    mixed = torch.zeros((1, 2, length), dtype=torch.float32)
+    for track, envelope in zip(tracks, gains):
+        mixed = mixed + _apply_gain_envelope(track, envelope, frame_size)
+
+    peak = float(mixed.abs().max()) if mixed.numel() else 0.0
+    limit = audio_math.apply_limiter(peak)
+    if limit < 1.0:
+        mixed = mixed * limit
+    return mixed
 
 
 def lock_audio(latent, audio_vae, waveform: torch.Tensor, sample_rate: int) -> tuple[dict, torch.Tensor]:

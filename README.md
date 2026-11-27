@@ -33,6 +33,7 @@ ComfyUI 节点库：**AI 短剧导演台**。把“模型 + 素材 + 剧本 + �
 | `DirectorDeck_M3_数字人锁音.json` | 真锁音 + 二采 |
 | `DirectorDeck_M4_锁音无损.json` | 源音频逐样点无损混流 |
 | `DirectorDeck_M5_latent续写.json` | 两段 latent 尾 token 续写（0.2.1，最快） |
+| `DirectorDeck_M6_多角色混音.json` | 多角色锁音 + 自动 ducking（0.2.3） |
 
 > 0.2.1 起续写多了一个更快的模式：把生成器的 `continuity` 选成 **`latent_tail`**，
 > 第 2 段会直接搬上一段 latent 的尾部 token（mask=0 钉住），省掉 RGB 解码/编码的绕路。
@@ -72,8 +73,34 @@ ComfyUI 节点库：**AI 短剧导演台**。把“模型 + 素材 + 剧本 + �
 | `DirectorDeck_SeamFixer` | 独立接缝修正（也可单独修已有两段） |
 | `DirectorDeck_FinalCut` | 多段合并：自动裁衔接头、拼音轨、写 manifest；可选 `audio_from_source` 用锁音源轨（无损） |
 | `DirectorDeck_SegmentCache` | 抽卡记录（status/store/clear，只存元数据） |
-| `DirectorDeck_VoiceLock` | 数字人锁音器：角色→音频槽+时间轴起点（真锁音） |
+| `DirectorDeck_VoiceLock` | 数字人锁音器：角色→音频槽+时间轴起点（+增益/优先级）；多角色自动 ducking / 混音 |
 | `DirectorDeck_Refiner` | 二采工具：低 denoise 再采样（音频锁定）或 lanczos 放大 |
+
+## 多角色锁音：自动 ducking / 混音（0.2.3）
+
+锁音器的角色行支持 `名字: 音频槽, 起始秒, 增益dB, 优先级`；同一段里多个角色同时说话时：
+
+| `mix_mode` | 规则 |
+|---|---|
+| `auto_duck`（默认） | 每一小帧里最响的角色不被压，其他同时发言的角色压低 `duck_db` |
+| `priority` | 按角色优先级决定谁不被压（主角/旁白可以设高一点） |
+| `sum` | 只叠加，不做自动压低（素材本身混好时用） |
+
+`duck_db` 默认 -8dB；`attack_ms`/`release_ms` 控制压低与恢复速度（默认 60/200ms），
+素材切入切出还有 8ms 淡入淡出，最后统一限幅防削波。混音参数会写进 cast 并参与缓存指纹，
+改 ducking 会正确触发重新生成。
+
+**验证**（`tools/mix_rules_check.py`，合成 440/880Hz 双角色、不需要 GPU）：
+
+| 场景 | 结果 |
+|---|---|
+| priority 模式，B 在重叠区 | **-7.99dB**（目标 -8dB），A 保持 **0.00dB** |
+| sum 模式 | 重叠区变化 **0.00dB** |
+| auto_duck，B 更响 | A 被压 **-8.00dB** |
+| 单路增益 -6dB | 实测 **-6.00dB** |
+| 峰值 | 0.508（未触限幅） |
+
+真机 M6（两路合成音频 + FinalCut `audio_from_source` 无损源轨）见 `examples/m6_mix_rules_api.json`。
 
 ## 安装 / 开发
 

@@ -30,6 +30,7 @@
 | **M5**（✅ 完成） | 6 个 UI 画布工作流（round-trip 校验）、docs/INSTALL.md、docs/UI_WORKFLOWS.md、CHANGELOG、Registry 元数据与 publish workflow | 全部工作流 API round-trip PASS；安装文档可照做；`node --check` / 单测通过；发布需用户提供 Registry token |
 | **0.2.1**（✅） | latent 尾帧续写（`continuity=latent_tail`） | 两段 260 帧 / 10.83s；边界亮度差 0.00378；同规格段比 RGB 引导快约 1/3 |
 | **0.2.2**（✅） | 画面级抽卡缓存（`cache_mode` + mp4/npz 磁盘缓存） | 冷跑 346.7s → 重启后全命中 3.6s（约 96×）；画面平均像素差 2.76；约 8MB/段 |
+| **0.2.3**（✅） | 多角色锁音自动 ducking / 混音规则（auto_duck/priority/sum + 每路增益/优先级 + 平滑包络 + 限幅） | 应用层 priority 实测 -7.99dB（目标 -8）、sum 0.00dB；真机 M6 两路锁音成片验证 |
 
 ## 工程约定
 

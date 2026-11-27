@@ -44,10 +44,11 @@ def canonical_json(value: Any) -> str:
 
 
 def _normalize_cast(data: Mapping[str, Any] | None) -> dict:
-    """把音色数据扶正成标准结构（角色列表 + 是否锁音）。"""
+    """把音色数据扶正成标准结构（角色列表 + 是否锁音 + 混音规则）。"""
     base = {"schema": "DIRECTOR_CAST@1",
             "roles": list((data or {}).get("roles") or []),
-            "lock_audio": bool((data or {}).get("lock_audio", False))}
+            "lock_audio": bool((data or {}).get("lock_audio", False)),
+            "mix": dict((data or {}).get("mix") or {})}
     return base
 
 
@@ -56,13 +57,13 @@ def _serializable_cast(cast: Mapping[str, Any] | None) -> dict:
 
     为什么要单独一个函数：真正的 cast 里带着 audio_data（张量），采样要用；
     但 segment 元数据要写 history/磁盘，张量不能序列化，必须在这里降级。
+    混音规则（mix）和每路增益/优先级是纯数据，必须保留——它们会影响画面声音。
     """
     data = _normalize_cast(cast)
     roles = []
     for role in data["roles"]:
-        # 只保留元数据字段；audio_data / waveform 之类一律不进 JSON。
         item = {k: v for k, v in role.items()
-                if k in ("id", "name", "start", "voice")}
+                if k in ("id", "name", "start", "voice", "gain_db", "priority")}
         roles.append(item)
     data["roles"] = roles
     return data
@@ -85,6 +86,8 @@ def merge_cast_by_character(base: Mapping[str, Any] | None,
     out["roles"] = list(by_id.values())
     if "lock_audio" in (override or {}):
         out["lock_audio"] = bool(override["lock_audio"])
+    if (override or {}).get("mix"):
+        out["mix"] = dict(override["mix"])
     return out
 
 

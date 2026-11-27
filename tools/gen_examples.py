@@ -244,6 +244,8 @@ def m3_digital_human() -> dict:
         "5": {"class_type": "LoadAudio", "inputs": {"audio": "directordeck_voice.wav"}},
         "6": {"class_type": "DirectorDeck_VoiceLock",
               "inputs": {"roles": "女主: 1, 0.0", "lock_audio": True,
+                         "mix_mode": "auto_duck", "duck_db": -8.0,
+                         "attack_ms": 60, "release_ms": 200,
                          "audio_1": ["5", 0]}},
         "10": {"class_type": "DirectorDeck_DirectorTake",
                "inputs": {
@@ -289,6 +291,8 @@ def m4_lock_finalcut() -> dict:
         "5": {"class_type": "LoadAudio", "inputs": {"audio": "directordeck_voice.wav"}},
         "6": {"class_type": "DirectorDeck_VoiceLock",
               "inputs": {"roles": "女主: 1, 0.0", "lock_audio": True,
+                         "mix_mode": "auto_duck", "duck_db": -8.0,
+                         "attack_ms": 60, "release_ms": 200,
                          "audio_1": ["5", 0]}},
         "10": {"class_type": "DirectorDeck_DirectorTake",
                "inputs": {
@@ -354,6 +358,50 @@ def m5_latent_chain() -> dict:
     return graph
 
 
+def m6_mix_rules() -> dict:
+    """M6 多角色锁音 ducking 示例。
+
+    A 是 440Hz（0~2.5s，优先级 2），B 是 880Hz（2.0~5.17s，优先级 1）；
+    priority 模式在重叠区（2.0~2.5s）把 B 压低 8dB，A 保持原样。
+    成片用 FinalCut 的 audio_from_source 直接混源轨，方便逐样点量测 ducking。
+    """
+    graph = {
+        "1": loader_node(),
+        "2": config_node(),
+        "3": script_node(),
+        "5": {"class_type": "LoadAudio", "inputs": {"audio": "mix_a.wav"}},
+        "6": {"class_type": "LoadAudio", "inputs": {"audio": "mix_b.wav"}},
+        "7": {"class_type": "DirectorDeck_VoiceLock",
+              "inputs": {"roles": "A: 1, 0.0, 0, 2\nB: 2, 0.0, 0, 1",
+                         "lock_audio": True, "mix_mode": "priority",
+                         "duck_db": -8.0, "attack_ms": 40, "release_ms": 200,
+                         "audio_1": ["5", 0], "audio_2": ["6", 0]}},
+        "10": {"class_type": "DirectorDeck_DirectorTake",
+               "inputs": {
+                   "bundle": ["1", 0], "config": ["2", 0], "script": ["3", 0],
+                   "segment_index": 1, "bundle_policy": "provided",
+                   "config_policy": "inherit", "assets_policy": "clear",
+                   "brief_policy": "inherit", "cast_policy": "replace",
+                   "continuity": "start", "seed": 0, "cache_mode": "auto",
+                   "cast": ["7", 0]}},
+        "40": {"class_type": "DirectorDeck_FinalCut",
+               "inputs": {"segment_1": ["10", 0], "images_1": ["10", 1],
+                          "audio_1": ["10", 2], "save_manifest": True,
+                          "audio_from_source": True}},
+        "41": {"class_type": "CreateVideo",
+               "inputs": {"images": ["40", 0], "fps": 24.0, "audio": ["40", 1],
+                          "codec": "h264"}},
+        "42": {"class_type": "SaveVideo",
+               "inputs": {"video": ["41", 0],
+                          "filename_prefix": "DirectorDeck/M6_mix_rules",
+                          "format": "auto", "codec": "auto"}},
+        "43": {"class_type": "SaveAudio",
+               "inputs": {"audio": ["40", 1],
+                          "filename_prefix": "DirectorDeck/M6_mix_source"}},
+    }
+    return graph
+
+
 def main() -> int:
     os.makedirs(EXAMPLE_DIR, exist_ok=True)
     for name, graph in (("m1_single_segment_api", single()),
@@ -362,7 +410,8 @@ def main() -> int:
                         ("m2_reroll_seg2_api", m2_reroll()),
                         ("m3_digital_human_api", m3_digital_human()),
                         ("m4_lock_finalcut_api", m4_lock_finalcut()),
-                        ("m5_latent_chain_api", m5_latent_chain())):
+                        ("m5_latent_chain_api", m5_latent_chain()),
+                        ("m6_mix_rules_api", m6_mix_rules())):
         path = os.path.join(EXAMPLE_DIR, name + ".json")
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(graph, fh, ensure_ascii=False, indent=2)

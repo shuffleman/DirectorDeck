@@ -68,6 +68,10 @@
     "inputs": {
       "roles": "女主: 1, 0.0",
       "lock_audio": true,
+      "mix_mode": "auto_duck",
+      "duck_db": -8.0,
+      "attack_ms": 60,
+      "release_ms": 200,
       "audio_1": [
         "5",
         0
