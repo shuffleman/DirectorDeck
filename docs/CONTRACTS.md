@@ -362,7 +362,39 @@ segment_fingerprint = sha1(canonical_json({
 
 ## 12. 未决问题
 
-- Registry PublisherId（`shuffleman` 需先在 registry 注册）；
-- 二采先做「成片 SeedVR2 超分」还是直接「H3 latent 二采」；
-- 锁音的自研节点放 M2 还是 M3（建议 M2 底座、M3 完成数字人模式）；
-- AGPL-3.0 合规审查（clean-room 边界）。
+- Registry PublisherId 注册与首发（`shuffleman`）；
+- latent 尾帧续写（D3 后半）与抽卡画面级复用；
+- 多角色音频混音的自动 ducking（M4 后可选）。
+
+## 13. 前端与工作流（M4/M5）
+
+### 13.1 前端扩展
+
+- 文件：`director_deck/web/directordeck.js`；由根 `__init__.py` 的 `WEB_DIRECTORY` 暴露，
+  访问路径 `/extensions/DirectorDeck/directordeck.js`。
+- 只依赖 `app` / `api` / `LiteGraph` 公开接口；浮动面板按钮：
+  添加下一段 / 加素材覆盖 / 加数字人锁音 / 加段级剧本 / 重抽选中段 / 查看段清单 / 帮助。
+- 自动接线约定：添加下一段 = 复制 bundle/config/script 上游 + 接 previous_segment +
+  policy 填 `inherit×5 + guide_tail`；覆盖节点 = 创建后把对应 policy 切 `replace`。
+
+### 13.2 后端路由（只读）
+
+| 方法/路径 | 返回 |
+|---|---|
+| `GET /directordeck/health` | `{ok, time, version}` |
+| `GET /directordeck/segments?limit=N` | 最近 N 条段元数据（含 `lock`/`seam`/`refine` 字段） |
+| `GET /directordeck/manifests?limit=N` | 最近 N 条成片清单 |
+
+### 13.3 画布工作流（UI 0.4）
+
+| 文件（examples/ui/） | 对应 API 示例 |
+|---|---|
+| `DirectorDeck_M1_单段闭环.json` | `m1_single_segment_api.json` |
+| `DirectorDeck_M1_参考生视频.json` | `m1_ref2va_api.json` |
+| `DirectorDeck_M2_三段链.json` | `m2_chain_api.json` |
+| `DirectorDeck_M3_数字人锁音.json` | `m3_digital_human_api.json` |
+| `DirectorDeck_M4_锁音无损.json` | `m4_lock_finalcut_api.json` |
+
+生成与校验：`python tools/make_ui_workflows.py [server]` —— 从运行中 ComfyUI 拉 `object_info`，
+按真实控件顺序生成 `widgets_values`，再用 `ui_to_api()` 反向还原并与 API 示例逐输入比对
+（PASS 才算生成成功）。

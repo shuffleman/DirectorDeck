@@ -27,7 +27,7 @@
 | **M2**（✅ 完成） | FramePlanner、接续写（尾帧+尾音 AddGuide）、SeamFixer（曝光匹配）、FinalCut（裁头+合并+manifest）、SegmentCache（抽卡记录） | 8189 实例 3 段链：396 帧 / 16.5s / 640x352；段边界亮度差 0.00141 与 0.00020（<0.01）；改第 2 段 seed 重跑 `execution_cached=["1","2","3","10"]`，只重跑 2/3 段（695s→406s） |
 | **M3**（✅ 完成） | VoiceLock（音频 VAE 编码 → 替换音频流 → noise_mask=0 真锁）、AV latent 拆合层、Refiner（低 denoise 再来一遍 + 锁音）、音频时间窗口数学 | 8189 实例：`lock.applied=true`；源音频 vs 锁音输出包络相关 0.9709、频带一致；二采 124→124 帧、像素差 5.7、raw vs refined 音频相关 0.9946 |
 | **M4**（✅ 完成） | 前端浮动面板（添加下一段/覆盖节点/重抽/段清单/i18n）、后端 JSON 路由、FinalCut 源音频无损混流 | `node --check` 通过；`/extensions` 收录前端 JS 且 200；路由返回真实段数据；锁音段成片 FLAC 与源 wav 样点相关 1.0 / 最大差 0.0 |
-| M5 | 文档、4 个示例工作流、Comfy Registry 发布 | 一键安装 + 示例可跑 |
+| **M5**（✅ 完成） | 5 个 UI 画布工作流（round-trip 校验）、docs/INSTALL.md、docs/UI_WORKFLOWS.md、CHANGELOG、Registry 元数据与 publish workflow | 全部工作流 API round-trip PASS；安装文档可照做；`node --check` / 单测通过；发布需用户提供 Registry token |
 
 ## 工程约定
 

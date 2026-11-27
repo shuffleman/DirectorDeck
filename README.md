@@ -15,7 +15,23 @@ ComfyUI 节点库：**AI 短剧导演台**。把“模型 + 素材 + 剧本 + �
 | **M2 链式多段** | ✅ | 帧计划器、尾帧/尾音引导续写、接缝曝光修正、多段合并、抽卡缓存；3 段 16.5s 真机出片 |
 | **M3 锁音+二采** | ✅ | 数字人锁音（逐流 noise_mask=0 真锁）、AV latent 拆合手术、二采（低 denoise 再采样）、音频 VAE 编解码；真机验证 |
 | **M4 前端体验** | ✅ | 导演台浮动面板（添加下一段/覆盖节点/重抽/段清单）、后端 JSON 路由、FinalCut 源音频无损混流 |
-| M5 发布 | ⬜ | 文档、示例工作流、Comfy Registry |
+| **M5 发布** | ✅ | 5 个画布工作流（examples/ui）、安装/工作流文档、CHANGELOG、Registry 元数据与发布 workflow |
+
+## 快速开始
+
+1. **安装**：把仓库目录联接/复制到 `<ComfyUI>/custom_nodes/DirectorDeck`，重启 ComfyUI（详见 [docs/INSTALL.md](docs/INSTALL.md)）。
+2. **打开画布工作流**：`examples/ui/DirectorDeck_M1_单段闭环.json` → 在「模型加载器」里选模型 → 运行。
+3. **多段/数字人**：换 `DirectorDeck_M2_三段链.json` / `DirectorDeck_M3_数字人锁音.json`，
+   右下角「DirectorDeck 导演台」面板可一键“添加下一段 / 加覆盖 / 重抽”
+   （详见 [docs/UI_WORKFLOWS.md](docs/UI_WORKFLOWS.md)）。
+
+| 画布工作流 | 说明 |
+|---|---|
+| `DirectorDeck_M1_单段闭环.json` | 单镜头 5 秒 |
+| `DirectorDeck_M1_参考生视频.json` | 参考图 + `@图片N` + 段级剧本 |
+| `DirectorDeck_M2_三段链.json` | 3 段续写 + 接缝 + 合并 + manifest |
+| `DirectorDeck_M3_数字人锁音.json` | 真锁音 + 二采 |
+| `DirectorDeck_M4_锁音无损.json` | 源音频逐样点无损混流 |
 
 ## 设计要点（已定稿）
 
