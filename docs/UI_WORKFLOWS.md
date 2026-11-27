@@ -1,6 +1,7 @@
 # DirectorDeck 画布工作流说明
 
 > 11 个 UI 格式工作流在 `examples/ui/`，在 ComfyUI 里用 **Workflow → Open**（或直接拖进画布）打开。
+> 节点参数在画布上显示中文；工作流文件里的字段名仍是英文（API/旧工作流兼容）。
 > 对应的 API 格式在 `examples/*.json`，两者逐输入校验一致（`tools/make_ui_workflows.py` 的 round-trip 校验）。
 
 | 工作流 | 用到的能力 | 建议场景 |

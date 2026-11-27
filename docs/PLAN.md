@@ -40,6 +40,7 @@
 | **0.6.0**（✅） | 编剧台 ScriptSmith：skill 加载 + 小说转剧本（本地/远程 OpenAI 兼容 LLM、输出语言、素材/角色对齐、script + voice_lines 输出）；M12 画布；import_skill / mock_llm 工具 | M12 真机：mock LLM → 剧本 → TTS → 锁音成片；12 个 UI 工作流全 PASS；140 单测 |
 | **0.7.0**（✅） | 预置漫剧老李 Skill 全集（11 个 skill + references）与 H3 V6 提示词模板到 `skills/`；skill 扫描支持套件子目录 | 13 项 skill 可选；V6 可解析；146 单测 |
 | **0.8.0**（✅） | **移除剧本生成与 skill/LLM**；新增外部剧本导入 + 角色/场景/音频自动匹配（ScriptImport）；前端一键建生成器/合并输出；M13 画布 | M13 真机导入两段剧本链；匹配报告；11 个 UI 工作流全 PASS |
+| **0.8.1**（✅） | 节点参数显示名中文化（前端 label 层，API 字段名保持英文） | 14 个节点控件/插头/输出中文显示；JS `node --check` 通过；138 单测 |
 
 ## 工程约定
 

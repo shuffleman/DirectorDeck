@@ -165,6 +165,7 @@ function createNode(type, pos) {
   if (!node) throw new Error(`节点创建失败：${type}`);
   node.pos = Array.isArray(pos) ? pos : [400, 200];
   app.graph.add(node);
+  localizeNode(node);
   return node;
 }
 
@@ -568,9 +569,157 @@ function buildPanel() {
   document.body.appendChild(panel);
 }
 
+// ------------------------------------------------------ 参数中文名（只改显示）
+// ComfyUI 的 API 字段名必须保持英文（工作流/脚本/缓存都靠它），
+// 这里只改控件和插头在画布上的显示名；值（如 inherit/auto_duck）保持原样。
+const NODE_INPUT_ZH = {
+  DirectorDeck_ModelLoader: {
+    fl2va_model: "主模型", text_encoder: "文本编码器", video_vae: "视频 VAE",
+    audio_vae: "音频 VAE", weight_dtype: "权重精度", vram_tier: "显存策略",
+    ref2va_model: "参考模型（可选）", lora_1: "LoRA 1", strength_1: "LoRA 1 强度",
+    lora_2: "LoRA 2", strength_2: "LoRA 2 强度", lora_3: "LoRA 3",
+    strength_3: "LoRA 3 强度", lora_4: "LoRA 4", strength_4: "LoRA 4 强度",
+    shift_video: "视频 Shift", shift_audio: "音频 Shift",
+  },
+  DirectorDeck_DirectorConfig: {
+    width: "宽度", height: "高度", segment_seconds: "段时长（秒）",
+    handoff_frames: "衔接帧数", sampler_name: "采样器", scheduler: "调度器",
+    steps: "采样步数", denoise: "去噪强度", sigmas_string: "Sigma 序列",
+    interpolate_to_steps: "插值步数", seed_strategy: "种子策略",
+    seed_base: "基础种子", preview: "预览", vram_policy: "显存策略",
+    cleanup_segments: "段显存清理", seam_enabled: "接缝修正",
+    seam_window: "接缝窗口", seam_max_add: "接缝最大补偿",
+    seam_gain_limit: "接缝增益上限", output_dir: "输出目录",
+  },
+  DirectorDeck_AssetShelf: {
+    image_1: "图片 1", image_2: "图片 2", image_3: "图片 3", image_4: "图片 4",
+    image_5: "图片 5", image_6: "图片 6", image_7: "图片 7", image_8: "图片 8",
+    image_9: "图片 9",
+  },
+  DirectorDeck_ScriptDesk: {
+    text: "剧本文本", mode: "分段模式", default_seconds: "默认段长（秒）",
+    max_segments: "最大段数", keep_header: "保留段标题", regex_pattern: "自定义分段正则",
+  },
+  DirectorDeck_SegmentBrief: {
+    text: "段文案", seconds: "时长（秒）", dialogue: "对白", refs: "图片引用",
+  },
+  DirectorDeck_FramePlanner: {
+    script: "剧本", config: "全局配置", keep_full: "保留完整计划",
+  },
+  DirectorDeck_DirectorTake: {
+    bundle: "模型组合", config: "全局配置", script: "剧本", assets: "素材库（可选）",
+    brief: "段级剧本", cast: "角色音色表", previous_segment: "上一段",
+    segment_index: "段号", bundle_policy: "模型策略", config_policy: "配置策略",
+    assets_policy: "素材策略", brief_policy: "剧本策略", cast_policy: "音色策略",
+    continuity: "续写模式", seed: "种子", cache_mode: "抽卡缓存",
+  },
+  DirectorDeck_SeamFixer: {
+    prev_images: "上一段画面", cur_images: "当前段画面", cur_head: "衔接帧数",
+    enabled: "启用", window: "窗口", max_add: "最大补偿", gain_limit: "增益上限",
+  },
+  DirectorDeck_FinalCut: {
+    segment_1: "第 1 段", images_1: "第 1 段画面", audio_1: "第 1 段音轨",
+    segment_2: "第 2 段", images_2: "第 2 段画面", audio_2: "第 2 段音轨",
+    segment_3: "第 3 段", images_3: "第 3 段画面", audio_3: "第 3 段音轨",
+    segment_4: "第 4 段", images_4: "第 4 段画面", audio_4: "第 4 段音轨",
+    save_manifest: "保存清单", audio_from_source: "源音轨无损",
+    audio_crossfade_ms: "边界淡入淡出（毫秒）",
+  },
+  DirectorDeck_SegmentCache: {
+    segment: "段数据", mode: "操作", scope: "范围",
+  },
+  DirectorDeck_VoiceLock: {
+    roles: "角色表", lock_audio: "锁音", mix_mode: "混音模式",
+    duck_db: "Duck 深度（dB）", attack_ms: "压下时间（毫秒）",
+    release_ms: "恢复时间（毫秒）", audio_1: "音频 1", audio_2: "音频 2",
+    audio_3: "音频 3",
+  },
+  DirectorDeck_TTSBooth: {
+    breeze_model: "TTS 模型", lines: "台词表", auto_start: "自动排期",
+    auto_split: "自动分段", pause_ms: "句间停顿（毫秒）",
+    chars_per_second: "预估语速", max_seconds: "单段上限（秒）",
+    mix_mode: "混音模式", duck_db: "Duck 深度（dB）",
+    attack_ms: "压下时间（毫秒）", release_ms: "恢复时间（毫秒）",
+    cfg_scale: "指令强度", max_new_tokens: "最大音频帧数",
+    temperature: "温度", top_k: "Top-K", top_p: "Top-P",
+    repetition_penalty: "重复惩罚", depth_temperature: "深度温度",
+    depth_top_k: "深度 Top-K", depth_top_p: "深度 Top-P", seed: "种子",
+  },
+  DirectorDeck_ScriptImport: {
+    script: "剧本内容", format: "剧本格式", segment_seconds: "默认段长（秒）",
+    match_assets: "自动匹配素材", match_scenes: "匹配场景",
+    min_score: "匹配阈值", assets: "素材库", cast: "角色音色库",
+  },
+  DirectorDeck_Refiner: {
+    bundle: "模型组合", segment: "段数据", images: "画面", audio: "音轨",
+    mode: "二采模式", denoise: "去噪强度", steps: "步数",
+    sampler_name: "采样器", scheduler: "调度器", upscale: "放大倍数",
+  },
+};
+
+const NODE_OUTPUT_ZH = {
+  DirectorDeck_ModelLoader: { bundle: "模型组合", summary: "摘要" },
+  DirectorDeck_AssetShelf: { assets: "素材库" },
+  DirectorDeck_ScriptDesk: { script: "剧本", summary: "摘要" },
+  DirectorDeck_SegmentBrief: { brief: "段级剧本" },
+  DirectorDeck_FramePlanner: { plan: "帧计划", summary: "摘要" },
+  DirectorDeck_DirectorTake: { segment: "段数据", images: "画面", audio: "音轨" },
+  DirectorDeck_SeamFixer: { images: "画面", info: "接缝信息" },
+  DirectorDeck_FinalCut: { images: "成片画面", audio: "成片音轨", manifest: "成片清单" },
+  DirectorDeck_SegmentCache: { segment: "段数据", summary: "摘要" },
+  DirectorDeck_VoiceLock: { cast: "角色音色表", summary: "摘要" },
+  DirectorDeck_TTSBooth: {
+    cast: "角色音色表", audio_1: "音频 1", audio_2: "音频 2", audio_3: "音频 3",
+    summary: "摘要", total_seconds: "总时长", segment_count: "段数", plan: "分段计划",
+  },
+  DirectorDeck_ScriptImport: {
+    script: "剧本", script_text: "剧本正文", mapping: "匹配对照表",
+    summary: "摘要", segment_count: "段数",
+  },
+  DirectorDeck_Refiner: { segment: "段数据", images: "画面", audio: "音轨" },
+};
+
+function localizeNode(node) {
+  if (!node || !node.type || !node.type.startsWith(PREFIX)) return;
+  const inputMap = NODE_INPUT_ZH[node.type];
+  if (inputMap) {
+    for (const w of node.widgets || []) {
+      const label = inputMap[w.name];
+      if (label) {
+        w.label = label;
+        w.localized_name = label;
+      }
+    }
+    for (const input of node.inputs || []) {
+      const label = inputMap[input.name];
+      if (label) {
+        input.label = label;
+        input.localized_name = label;
+      }
+    }
+  }
+  const outputMap = NODE_OUTPUT_ZH[node.type];
+  if (outputMap) {
+    for (const output of node.outputs || []) {
+      const label = outputMap[output.name];
+      if (label) {
+        output.label = label;
+        output.localized_name = label;
+      }
+    }
+  }
+}
+
 // ------------------------------------------------------------------ 注册
 app.registerExtension({
   name: "DirectorDeck.Assistant",
+  // 新建/加载节点时把参数显示名换成中文（API 字段名仍是英文）。
+  nodeCreated(node) {
+    localizeNode(node);
+  },
+  loadedGraphNode(node) {
+    localizeNode(node);
+  },
   async setup() {
     buildPanel();
 
