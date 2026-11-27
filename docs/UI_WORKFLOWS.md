@@ -33,6 +33,17 @@
 
 > 默认值是 `unset`：不选就报 `DD-E001`，这是故意的，防止“以为继承了其实没有”。
 
+## 接本地 TTS（Breeze-TTS-2）
+
+画布上按这个顺序接即可（API 示例 `examples/m8_tts_lock_api.json`）：
+
+1. `Breeze-TTS-2 Load Model`（model 选 **int8 hybrid (recommended)**，decode_mode 建议 `eager`）；
+2. 每个角色一个 `Breeze TTS 2 Voice Design`（或 `Voice Clone`/`Voice Direction`），填台词与音色描述，种子固定便于复现；
+3. 各 TTS 的 `AUDIO` 接到 `DirectorDeck Voice Lock` 的 `audio_1..3`，角色行写 `角色名: 槽号, 起始秒, 增益dB, 优先级`；
+4. Voice Lock 的 `cast` 接 `Director Take`（`cast_policy=replace`），后面照常 `FinalCut(audio_from_source=True)` 混源音轨。
+
+注意：TTS 音频长度要落在该段采样窗口内；角色起始秒按整条时间轴算，超出窗口的尾巴会被截断。
+
 ## 多角色锁音的角色行格式
 
 ```

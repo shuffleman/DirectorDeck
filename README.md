@@ -102,6 +102,33 @@ ComfyUI 节点库：**AI 短剧导演台**。把“模型 + 素材 + 剧本 + �
 
 真机 M6（两路合成音频 + FinalCut `audio_from_source` 无损源轨）见 `examples/m6_mix_rules_api.json`。
 
+## 本地 TTS 接入（Breeze-TTS-2，0.2.5）
+
+本机装了 **ComfyUI-Breeze-TTS-2** 节点包和 `Breeze-TTS-2-int8-hybrid.safetensors`
+（`ComfyUI/models/breezetts2/`，约 4.6GB）。它输出的 `AUDIO` 可以直接接进锁音器：
+
+```
+BreezeTTS2LoadModel ──┬─ BreezeTTS2VoiceDesign(女主台词/音色描述) ── AUDIO ──┐
+                      └─ BreezeTTS2VoiceDesign(男主台词/音色描述) ── AUDIO ──┤
+                                                                  VoiceLock(audio_1/audio_2)
+                                                                       │
+                                                                  DirectorTake(锁音)
+                                                                       │
+                                                            FinalCut(audio_from_source=True)
+```
+
+- **逐角色 TTS → VoiceLock（推荐）**：每个角色一路 AUDIO，保留 ducking/每角色增益/时间轴控制。
+  三种出声音方式：`VoiceDesign`（纯描述，免参考音频）、`VoiceClone`（参考音频克隆）、
+  `VoiceDirection`（克隆 + 情绪/语速指令）。
+- **整段对话一次生成**：`BreezeTTS2Speaker` × N → `BreezeTTS2MultiSpeaker`（脚本按 `名字: 台词`）
+  → 一路 AUDIO → VoiceLock 单角色（`sum` 模式），适合已经混好的对话。
+- TTS 输出是 **24kHz 单声道**，VoiceLock 会自动重采样到音频 VAE 的 32kHz，不需要手转。
+- 角色时间轴按 `roles` 里的起始秒排；TTS 时长超了会在段窗口尾部被截断，先按台词长度定段秒数。
+
+真机示例：`examples/m8_tts_lock_api.json`（女主 0s / 男主 1.2s，priority ducking，存两路原声方便核对）。
+验证结果：成片音频与两路 TTS 原声拟合 **corr=0.999**；A 停后 B 恢复满音量；
+重叠区 ducking 中位 **-7.0dB**、最安静窗口 **-7.85dB**（目标 -8dB）。
+
 ## 跨段一致性 + 混音快捷控件（0.2.4）
 
 - **跨段 ducking 连续性**：上一段的每个角色结尾增益会传给下一段作为包络起点，

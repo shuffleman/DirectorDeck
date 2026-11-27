@@ -23,6 +23,20 @@
 
 这些名称只是示例：节点面板里选你自己已有的文件即可。
 
+### 可选：本地 TTS（Breeze-TTS-2）
+
+想在生成器里直接合成台词（而不是另外录音），需要额外装 **ComfyUI-Breeze-TTS-2** 节点包和模型：
+
+| 项 | 要求 |
+|---|---|
+| 节点包 | `ComfyUI/custom_nodes/ComfyUI-Breeze-TTS-2`（提供 `BreezeTTS2LoadModel / VoiceDesign / VoiceClone / VoiceDirection / MultiSpeaker` 等节点） |
+| 模型 | `ComfyUI/models/breezetts2/drbaph_Breeze-TTS-2-comfyui/Breeze-TTS-2-int8-hybrid.safetensors`（推荐；约 4.6GB） |
+| 依赖 | 共享的 `audio_tokenizer/` 编解码器与配置文件（同一个仓库目录里） |
+
+接入方式：TTS 节点输出 `AUDIO` → 接 `DirectorDeck_VoiceLock` 的 `audio_1/audio_2/audio_3`；
+角色行写 `角色名: 槽号, 起始秒`。完整示例见 `examples/m8_tts_lock_api.json`。
+TTS 输出 24kHz 单声道，锁音器会自动重采样到 32kHz。
+
 ## 2. 安装（三选一）
 
 ### A. 开发模式（推荐，改代码立即生效，重启 ComfyUI 后加载）

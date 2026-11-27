@@ -199,6 +199,25 @@ class DirectorDeckTake:
         return {"ui": ui, "result": (result, images, audio)}
 
     @staticmethod
+    def _audio_signature(roles: list[dict]) -> str:
+        """把锁音用到的音频内容拼成哈希（缓存指纹用）。
+
+        为什么不能只存角色名/时间轴：TTS 节点每次生成的声音可能不同（种子/文案变了），
+        只按角色名缓存会错误复用上一次的音频。
+        """
+        digest = hashlib.sha1()
+        for role in roles:
+            data = role.get("audio_data") or {}
+            waveform = data.get("waveform")
+            digest.update(str(role.get("id") or role.get("name")).encode("utf-8"))
+            digest.update(str(data.get("sample_rate")).encode("utf-8"))
+            if waveform is not None:
+                array = waveform.detach().float().cpu().contiguous()
+                digest.update(str(tuple(array.shape)).encode("utf-8"))
+                digest.update(array.numpy().tobytes())
+        return digest.hexdigest()
+
+    @staticmethod
     def _resolve_seed(config: dict, node_seed: int, segment_index: int) -> int:
         """按节点 seed / 全局种子策略算本段 seed；返回 0 表示交给采样器随机。"""
         if int(node_seed) > 0:
@@ -336,7 +355,11 @@ class DirectorDeckTake:
                     plan.timeline_start, plan.head, plan.sample)
                 lock_sig = {"applied": True,
                             "roles": [r.get("name") for r in roles_with_audio],
-                            "window": [round(seg_start, 3), round(seg_end, 3)]}
+                            "window": [round(seg_start, 3), round(seg_end, 3)],
+                            # 关键：把“实际音频内容”的哈希也算进指纹。
+                            # TTS 每次生成的音频可能不同；只看角色名/时间轴会让缓存
+                            # 错误命中上一次的声音。
+                            "audio_hash": self._audio_signature(roles_with_audio)}
         guide_prev = None
         if resolved.continuity in ("guide_tail", "latent_tail") and previous_segment is not None:
             guide_prev = previous_segment.get("store_key")

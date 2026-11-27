@@ -14,8 +14,9 @@ from __future__ import annotations
 import hashlib
 import json
 
-# 缓存格式版本：改了缓存文件结构就 +1，旧缓存自动失效。
-CACHE_SCHEMA = 1
+# 缓存格式版本：改了缓存文件结构/指纹组成就 +1，旧缓存自动失效。
+# 0.2.5：锁音段的指纹加入“实际音频内容哈希”（TTS 每次生成可能不同）。
+CACHE_SCHEMA = 2
 
 
 def canonical_json(value) -> str:

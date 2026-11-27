@@ -311,7 +311,7 @@ segment_fingerprint = "sha1:" + sha1(canonical_json({
   seed,                     # 解析后的种子（seed=0 时节点内先随机定下来）
   sampler, scheduler, steps, denoise, sigmas, interpolate,
   continuity, guide_prev,   # 引导模式与上一段 store_key
-  lock                      # 锁音签名（applied/roles/window）
+  lock                      # 锁音签名：applied/roles/window + audio_hash（每路波形哈希）
 }))
 ```
 
@@ -322,6 +322,8 @@ segment_fingerprint = "sha1:" + sha1(canonical_json({
 - `npz`：音轨 float、latent 尾部（latent_tail 续写用）、锁音源轨（audio_from_source 用）
 - `json`：段结果元数据 + 画面尺寸（读回解码用）
 - `SegmentCache.mode`（生成器控件）：`auto`=命中复用、未命中生成并写；`off`=不读不写；`reroll`=无视命中、重新生成并覆盖。
+- **锁音内容哈希**：`lock.audio_hash` 由每路角色实际波形算出（0.2.5+）。TTS 每次生成可能不同，
+  只按角色名/时间轴缓存会错误复用旧声音；`cache_schema=2` 起必须带它。
 - 命中时跳过：条件构造、采样、VAE 解码；下游的续写/锁音/无损混流仍可用（运行期仓库会从缓存补齐）。
 - 载入失败/损坏/版本不符一律按“未命中”处理，不影响正常出片；写盘失败也不影响出片（错误码 `DD-E040` 仅用于显式 I/O 失败）。
 

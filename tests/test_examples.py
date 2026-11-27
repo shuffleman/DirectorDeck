@@ -117,6 +117,26 @@ class ExampleTest(unittest.TestCase):
                    if n["class_type"] == "DirectorDeck_FinalCut")
         self.assertIn("segment_2", cut["inputs"])
 
+    def test_m8_tts_lock(self):
+        graph = load("m8_tts_lock_api.json")
+        self._check(graph)
+        classes = {n["class_type"] for n in graph.values()}
+        for expected in ("BreezeTTS2LoadModel", "BreezeTTS2VoiceDesign",
+                         "DirectorDeck_VoiceLock", "DirectorDeck_DirectorTake",
+                         "DirectorDeck_FinalCut", "SaveAudio", "SaveVideo"):
+            self.assertIn(expected, classes)
+        lock = next(n for n in graph.values()
+                    if n["class_type"] == "DirectorDeck_VoiceLock")
+        self.assertIn("audio_1", lock["inputs"])
+        self.assertIn("audio_2", lock["inputs"])
+        self.assertEqual(lock["inputs"]["mix_mode"], "priority")
+        take = next(n for n in graph.values()
+                    if n["class_type"] == "DirectorDeck_DirectorTake")
+        self.assertEqual(take["inputs"]["cast_policy"], "replace")
+        cut = next(n for n in graph.values()
+                   if n["class_type"] == "DirectorDeck_FinalCut")
+        self.assertTrue(cut["inputs"]["audio_from_source"])
+
     def test_m7_crossfade(self):
         graph = load("m7_crossfade_api.json")
         self._check(graph)

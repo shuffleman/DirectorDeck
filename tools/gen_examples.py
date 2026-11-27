@@ -441,6 +441,66 @@ def m7_crossfade() -> dict:
     return graph
 
 
+def m8_tts_lock() -> dict:
+    """M8 本地 TTS（Breeze-TTS-2）-> 锁音 -> H3 数字人示例。
+
+    两个 Breeze TTS VoiceDesign 生成男女主台词（24kHz AUDIO）→ VoiceLock
+    （女主 0s、男主 1.2s，priority ducking）→ Take 锁音生成 → FinalCut
+    直接混源音轨 → SaveAudio/SaveVideo；同时把两路 TTS 原声也存下来方便核对。
+    """
+    def voice_design(node_id: str, text: str, instruction: str, seed: int) -> dict:
+        return {"class_type": "BreezeTTS2VoiceDesign",
+                "inputs": {"breeze_model": ["4", 0], "text": text,
+                           "instruction": instruction, "cfg_scale": 4.0,
+                           "max_new_tokens": 1500, "temperature": 0.9,
+                           "top_k": 50, "top_p": 1.0, "repetition_penalty": 1.1,
+                           "depth_temperature": 0.9, "depth_top_k": 50,
+                           "depth_top_p": 1.0, "seed": seed}}
+
+    graph = {
+        "1": loader_node(),
+        "2": config_node(),
+        "3": script_node(),
+        "4": {"class_type": "BreezeTTS2LoadModel",
+              "inputs": {"model": "int8 hybrid (recommended)", "dtype": "auto",
+                         "device": "auto", "attention": "auto",
+                         "decode_mode": "eager", "download_if_missing": False}},
+        "5": voice_design("5", "你好，我是这部剧的女主角。",
+                          "一位年轻女性，声音清澈温柔，语速偏慢，情绪平静。", 1111),
+        "6": voice_design("6", "收到，我去检查船桨，五分钟以后开拍。",
+                          "一位年轻男性，声音低沉沉稳，语速正常，语气干练。", 2222),
+        "7": {"class_type": "DirectorDeck_VoiceLock",
+              "inputs": {"roles": "女主: 1, 0.0, 0, 2\n男主: 2, 1.2, 0, 1",
+                         "lock_audio": True, "mix_mode": "priority",
+                         "duck_db": -8.0, "attack_ms": 60, "release_ms": 200,
+                         "audio_1": ["5", 0], "audio_2": ["6", 0]}},
+        "10": {"class_type": "DirectorDeck_DirectorTake",
+               "inputs": {"bundle": ["1", 0], "config": ["2", 0], "script": ["3", 0],
+                          "segment_index": 1, "bundle_policy": "provided",
+                          "config_policy": "inherit", "assets_policy": "clear",
+                          "brief_policy": "inherit", "cast_policy": "replace",
+                          "continuity": "start", "seed": 0, "cache_mode": "auto",
+                          "cast": ["7", 0]}},
+        "40": {"class_type": "DirectorDeck_FinalCut",
+               "inputs": {"segment_1": ["10", 0], "images_1": ["10", 1],
+                          "audio_1": ["10", 2], "save_manifest": True,
+                          "audio_from_source": True, "audio_crossfade_ms": 0}},
+        "41": {"class_type": "CreateVideo",
+               "inputs": {"images": ["40", 0], "fps": 24.0, "audio": ["40", 1],
+                          "codec": "h264"}},
+        "42": {"class_type": "SaveVideo",
+               "inputs": {"video": ["41", 0], "filename_prefix": "DirectorDeck/M8_tts_lock",
+                          "format": "auto", "codec": "auto"}},
+        "43": {"class_type": "SaveAudio",
+               "inputs": {"audio": ["40", 1], "filename_prefix": "DirectorDeck/M8_tts_mix"}},
+        "44": {"class_type": "SaveAudio",
+               "inputs": {"audio": ["5", 0], "filename_prefix": "DirectorDeck/M8_tts_a"}},
+        "45": {"class_type": "SaveAudio",
+               "inputs": {"audio": ["6", 0], "filename_prefix": "DirectorDeck/M8_tts_b"}},
+    }
+    return graph
+
+
 def main() -> int:
     os.makedirs(EXAMPLE_DIR, exist_ok=True)
     for name, graph in (("m1_single_segment_api", single()),
@@ -451,7 +511,8 @@ def main() -> int:
                         ("m4_lock_finalcut_api", m4_lock_finalcut()),
                         ("m5_latent_chain_api", m5_latent_chain()),
                         ("m6_mix_rules_api", m6_mix_rules()),
-                        ("m7_crossfade_api", m7_crossfade())):
+                        ("m7_crossfade_api", m7_crossfade()),
+                        ("m8_tts_lock_api", m8_tts_lock())):
         path = os.path.join(EXAMPLE_DIR, name + ".json")
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(graph, fh, ensure_ascii=False, indent=2)

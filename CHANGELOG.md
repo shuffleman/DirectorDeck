@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.2.5 — 本地 TTS（Breeze-TTS-2）接入锁音（2026-11-27）
+
+### 新增
+- 提供 **M8 本地 TTS 示例**：`examples/m8_tts_lock_api.json`
+  - `BreezeTTS2LoadModel`（int8 hybrid）→ 两个 `BreezeTTS2VoiceDesign`（女主/男主台词与音色描述）
+    → `DirectorDeck_VoiceLock`（按时间轴放置 + priority ducking）→ `Take` 真锁音生成
+    → `FinalCut(audio_from_source=True)` 直接混源音轨 → `SaveAudio/SaveVideo`。
+  - 同时保存两路 TTS 原声（`M8_tts_a/M8_tts_b`），方便核对时间轴/ducking。
+- **锁音缓存指纹加入“音频内容哈希”**：`Take` 现在对每路实际音频波形算哈希参与指纹。
+  TTS 每次生成的声音可能不同；此前只按角色名/时间轴缓存会错误复用上一次的声音。
+  缓存格式随之升到 `cache_schema=2`（旧缓存自动失效）。
+
+### 验证
+- 真机 8189：两段 TTS（2.48s / 2.80s）分别放在 0s / 1.2s，H3 生成 124 帧（5.17s）锁音成片；
+  成片音频与 TTS 原声的最小二乘拟合 **corr=0.999**，系数 `{A:1.414, B:0.678}`；
+  A 单独段系数 1.414、B 单独段 1.407（A 停后 B 恢复满音量）。
+- 重叠段 B/A 的 ducking 比例：中位 **-7.0dB**，最安静 10% 窗口 **-7.85dB**（目标 -8dB；
+  窗口包含起音/释放段时会偏高）。
+- TTS 输出 24kHz 单声道，VoiceLock 内部自动重采样到音频 VAE 的 32kHz，无需手转。
+- **缓存可复现**：固定 TTS 种子后两次生成的原声 SHA1 完全一致（`be475e5d08d1`/`2952c99570b5`），
+  重启 ComfyUI 再跑 m8 时 Take 命中磁盘缓存（段内 **0.34s**），整条 prompt **22.9s**
+  （其中两路 TTS 重新合成约 15s，没有 H3 采样）。
+
 ## 0.2.4 — 跨段 ducking 一致性 + 混音快捷控件（2026-11-27）
 
 ### 新增
