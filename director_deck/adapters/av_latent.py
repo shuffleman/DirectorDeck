@@ -146,18 +146,26 @@ def _apply_gain_envelope(track: torch.Tensor, gains: list[float], frame_size: in
 
 
 def build_audio_track(roles: list[dict], seg_start: float, seg_end: float,
-                      sample_rate: int = 32000, mix: dict | None = None) -> torch.Tensor:
+                      sample_rate: int = 32000, mix: dict | None = None,
+                      previous: dict | None = None,
+                      return_context: bool = False):
     """把多个角色的配音按时间轴铺成“本段一条音轨”，并按混音规则处理。
 
     混音规则（`mix`，来自 VoiceLock 节点）：
-    - `mode`：`auto_duck`（每帧最响的角色不被压，其他同帧发言者降 duck_db）/
-      `priority`（按角色 priority 决定谁不被压）/ `sum`（只叠加，不 duck）；
+    - `mode`：`auto_duck` / `priority` / `sum`；
     - `duck_db`：被压多少分贝（默认 -8dB ≈ 0.398 倍）；
     - `attack_ms` / `release_ms`：压下去/恢复的速度，避免爆音；
-    - 每路还可单独设 `gain_db`（角色行里的第 3 个参数）和 `priority`（第 4 个）。
-    最后统一做限幅，避免多路叠加削波。
+    - 每路还可单独设 `gain_db` 和 `priority`。
+
+    **跨段一致性**（`previous`）：上一段传下来的混音上下文
+    `{"gain_state": {角色: 结尾增益}, "tail": 尾音, "sample_rate": ...}`。
+    - 包络从上一段结尾的增益接着算（段边界不会突然“弹回 1.0”）；
+    - 返回的 context 里带着本段尾音和结尾增益，供下一段使用。
+
+    `return_context=True` 时返回 (track, context)，否则只返回 track。
     """
     mix = dict(mix or {})
+    previous = dict(previous or {})
     mode = str(mix.get("mode") or "auto_duck")
     duck_db = float(mix.get("duck_db", audio_math.DUCK_DB_DEFAULT))
     attack_ms = float(mix.get("attack_ms", audio_math.ATTACK_MS_DEFAULT))
@@ -167,7 +175,8 @@ def build_audio_track(roles: list[dict], seg_start: float, seg_end: float,
 
     tracks: list[torch.Tensor] = []
     used_roles: list[dict] = []
-    for role in roles or []:
+    role_keys: list[str] = []
+    for index, role in enumerate(roles or []):
         data = role.get("audio_data")
         if not data:
             continue
@@ -204,17 +213,28 @@ def build_audio_track(roles: list[dict], seg_start: float, seg_end: float,
             track[..., dst_i0 + count - fade:dst_i0 + count] *= ramp.flip(0)
         tracks.append(track)
         used_roles.append(role)
+        role_keys.append(str(role.get("id") or role.get("name") or f"role{index}"))
 
+    context = {
+        "gain_state": {},
+        "tail": None,
+        "sample_rate": int(sample_rate),
+        "limiter": 1.0,
+    }
     if not tracks:
-        return torch.zeros((1, 2, length), dtype=torch.float32)
+        empty = torch.zeros((1, 2, length), dtype=torch.float32)
+        return (empty, context) if return_context else empty
 
-    # 逐帧能量 -> 混音规则 -> 逐路增益包络。
+    # 逐帧能量 -> 混音规则 -> 逐路增益包络（起始增益接上一段结尾）。
+    gain_state = dict(previous.get("gain_state") or {})
+    initial = [float(gain_state.get(key, 1.0)) for key in role_keys]
     frame_size = max(1, int(round(sample_rate * frame_ms / 1000.0)))
     energies = [_frame_energies(track, frame_size) for track in tracks]
     priorities = [int(role.get("priority") or 0) for role in used_roles]
     gains = audio_math.mix_gains(
         energies, priorities, mode=mode, duck_db=duck_db,
-        attack_ms=attack_ms, release_ms=release_ms, frame_ms=frame_ms)
+        attack_ms=attack_ms, release_ms=release_ms, frame_ms=frame_ms,
+        initial_gains=initial)
 
     mixed = torch.zeros((1, 2, length), dtype=torch.float32)
     for track, envelope in zip(tracks, gains):
@@ -224,7 +244,16 @@ def build_audio_track(roles: list[dict], seg_start: float, seg_end: float,
     limit = audio_math.apply_limiter(peak)
     if limit < 1.0:
         mixed = mixed * limit
-    return mixed
+
+    context = {
+        "gain_state": {key: float(envelope[-1]) if envelope else 1.0
+                       for key, envelope in zip(role_keys, gains)},
+        # 尾部留 1 秒：下一段的混音上下文 / 段边界淡入淡出都能用。
+        "tail": mixed[..., -min(length, int(sample_rate)):].clone(),
+        "sample_rate": int(sample_rate),
+        "limiter": float(limit),
+    }
+    return (mixed, context) if return_context else mixed
 
 
 def lock_audio(latent, audio_vae, waveform: torch.Tensor, sample_rate: int) -> tuple[dict, torch.Tensor]:

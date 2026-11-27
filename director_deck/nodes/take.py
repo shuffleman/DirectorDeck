@@ -162,6 +162,7 @@ class DirectorDeckTake:
         audio = cached["audio"]
         latent_handoff = cached["latent_handoff"]
         lock_source_audio = cached["lock_source_audio"]
+        cached_mix = cached.get("mix_context")
         result = dict((cached.get("meta") or {}).get("segment") or {})
         result.update({
             "schema": "DIRECTOR_SEGMENT@1",
@@ -185,6 +186,7 @@ class DirectorDeckTake:
             "audio_full": audio,
             "latent_handoff": latent_handoff,
             "lock_source_audio": lock_source_audio,
+            "mix_context": cached_mix,
             "config": resolved.config,
             "assets": resolved.assets,
             "cast": resolved.cast,
@@ -379,6 +381,7 @@ class DirectorDeckTake:
         lock_info = {"applied": False}
         locked_audio_latent = None
         lock_source_audio = None
+        mix_context = None
         if resolved.cast.get("lock_audio"):
             roles_with_audio = [r for r in resolved.cast.get("roles") or []
                                 if r.get("audio_data")]
@@ -387,9 +390,12 @@ class DirectorDeckTake:
                 seg_start, seg_end = audio_math.segment_span(
                     plan.timeline_start, plan.head, plan.sample)
                 vae_rate = int(getattr(bundle["audio_vae"], "audio_sample_rate", 32000))
-                track = av_latent.build_audio_track(
+                # 跨段一致性：上一段结尾的 ducking 增益/尾音接着用，段边界不重置。
+                prev_mix = (prev_snapshot or {}).get("mix_context")
+                track, mix_context = av_latent.build_audio_track(
                     roles_with_audio, seg_start, seg_end, vae_rate,
-                    mix=resolved.cast.get("mix"))
+                    mix=resolved.cast.get("mix"), previous=prev_mix,
+                    return_context=True)
                 if float(track.abs().max()) > 0:
                     latent, locked_audio_latent = av_latent.lock_audio(
                         latent, bundle["audio_vae"], track, vae_rate)
@@ -402,6 +408,7 @@ class DirectorDeckTake:
                         "window": [round(seg_start, 3), round(seg_end, 3)],
                         "samples": int(track.shape[-1]),
                         "mix": resolved.cast.get("mix"),
+                        "mix_continuity": bool(prev_mix),
                     }
 
         # 5.8) latent 尾帧续写：把上一段 latent 的尾部 token 直接搬过来，mask=0 钉住。
@@ -503,6 +510,8 @@ class DirectorDeckTake:
             "latent_handoff": latent_handoff,
             # 锁音时的源音轨（成片可直接混流，做到逐样点无损）。
             "lock_source_audio": lock_source_audio,
+            # 跨段混音上下文：下一段的 ducking 从本段结尾的增益接着算。
+            "mix_context": mix_context,
             "config": resolved.config,
             "assets": resolved.assets,
             "cast": resolved.cast,
@@ -543,6 +552,7 @@ class DirectorDeckTake:
                     cache_root, cache_key, images=images, audio=audio,
                     latent_handoff=latent_handoff,
                     lock_source_audio=lock_source_audio,
+                    mix_context=mix_context,
                     meta={"segment": result})
             except Exception as exc:  # 缓存写失败不影响本次出片
                 print(f"[DirectorDeck] 缓存写入失败（继续出片）：{exc}")

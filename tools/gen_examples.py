@@ -402,6 +402,45 @@ def m6_mix_rules() -> dict:
     return graph
 
 
+def m7_crossfade() -> dict:
+    """M7 跨段音频交叉淡化示例（两段链 + FinalCut crossfade）。
+
+    两个 5 秒段用 RGB 尾帧续写，合并时用 `audio_crossfade_ms=80` 在段边界做
+    等功率交叉淡化；输出 wav（SaveAudio）方便对比“硬接 vs 交叉淡化”的边界跳变。
+    """
+    graph = {
+        "1": loader_node(),
+        "2": config_node(),
+        "3": script_node(),
+        "10": take_node("10", "1", "2", "3"),
+        "11": {"class_type": "DirectorDeck_DirectorTake",
+               "inputs": {"bundle": ["1", 0], "config": ["2", 0], "script": ["3", 0],
+                          "segment_index": 2, "bundle_policy": "inherit",
+                          "config_policy": "inherit", "assets_policy": "inherit",
+                          "brief_policy": "inherit", "cast_policy": "inherit",
+                          "continuity": "guide_tail", "seed": 0, "cache_mode": "auto",
+                          "previous_segment": ["10", 0]}},
+        "20": {"class_type": "DirectorDeck_FinalCut",
+               "inputs": {"segment_1": ["10", 0], "images_1": ["10", 1],
+                          "audio_1": ["10", 2],
+                          "segment_2": ["11", 0], "images_2": ["11", 1],
+                          "audio_2": ["11", 2],
+                          "save_manifest": True, "audio_from_source": False,
+                          "audio_crossfade_ms": 80}},
+        "21": {"class_type": "CreateVideo",
+               "inputs": {"images": ["20", 0], "fps": 24.0, "audio": ["20", 1],
+                          "codec": "h264"}},
+        "22": {"class_type": "SaveVideo",
+               "inputs": {"video": ["21", 0],
+                          "filename_prefix": "DirectorDeck/M7_crossfade",
+                          "format": "auto", "codec": "auto"}},
+        "23": {"class_type": "SaveAudio",
+               "inputs": {"audio": ["20", 1],
+                          "filename_prefix": "DirectorDeck/M7_crossfade"}},
+    }
+    return graph
+
+
 def main() -> int:
     os.makedirs(EXAMPLE_DIR, exist_ok=True)
     for name, graph in (("m1_single_segment_api", single()),
@@ -411,7 +450,8 @@ def main() -> int:
                         ("m3_digital_human_api", m3_digital_human()),
                         ("m4_lock_finalcut_api", m4_lock_finalcut()),
                         ("m5_latent_chain_api", m5_latent_chain()),
-                        ("m6_mix_rules_api", m6_mix_rules())):
+                        ("m6_mix_rules_api", m6_mix_rules()),
+                        ("m7_crossfade_api", m7_crossfade())):
         path = os.path.join(EXAMPLE_DIR, name + ".json")
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(graph, fh, ensure_ascii=False, indent=2)

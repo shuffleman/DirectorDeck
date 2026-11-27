@@ -106,7 +106,8 @@ def mix_gains(role_energies: list[list[float]], priorities: list[int] | None = N
               attack_ms: float = ATTACK_MS_DEFAULT,
               release_ms: float = RELEASE_MS_DEFAULT,
               frame_ms: float = MIX_FRAME_MS,
-              silence_ratio: float = SILENCE_RATIO) -> list[list[float]]:
+              silence_ratio: float = SILENCE_RATIO,
+              initial_gains: list[float] | None = None) -> list[list[float]]:
     """按帧算每个角色的增益包络。
 
     参数：
@@ -117,6 +118,7 @@ def mix_gains(role_energies: list[list[float]], priorities: list[int] | None = N
         priority  —— 每帧优先级最高的角色保持原样，其他角色压 duck_db；
         sum       —— 不做 ducking（只做每路基础增益）。
     - duck_db / attack_ms / release_ms：压多少、压下去多快、恢复多快。
+    - initial_gains：**跨段用**——包络从上一段结束时的增益接着算，段边界不会“弹回 1.0”。
 
     返回与 role_energies 同形状的增益列表（1.0=不压）。
     """
@@ -131,6 +133,9 @@ def mix_gains(role_energies: list[list[float]], priorities: list[int] | None = N
     priorities = list(priorities or [0] * roles)
     while len(priorities) < roles:
         priorities.append(0)
+    initial = list(initial_gains or [1.0] * roles)
+    while len(initial) < roles:
+        initial.append(1.0)
 
     # 1) 归一化能量：用全局峰值判断“说话/没说话”。
     all_max = max((max(row) if row else 0.0) for row in role_energies) or 1e-9
@@ -154,13 +159,14 @@ def mix_gains(role_energies: list[list[float]], priorities: list[int] | None = N
                     targets[role][frame] = duck_gain
 
     # 3) 平滑：目标变小走 attack，变大走 release，避免爆音。
+    #    起始值用 initial_gains：第二段开头会继承上一段末尾的增益，ducking 不会重置。
     import math
     frame_ms = max(1e-3, float(frame_ms))
     attack_coeff = math.exp(-frame_ms / max(1.0, float(attack_ms)))
     release_coeff = math.exp(-frame_ms / max(1.0, float(release_ms)))
     envelopes = []
     for role in range(roles):
-        gain = 1.0
+        gain = max(0.0, min(1.0, float(initial[role])))
         row = []
         for frame in range(frames):
             target = targets[role][frame]
@@ -169,6 +175,22 @@ def mix_gains(role_energies: list[list[float]], priorities: list[int] | None = N
             row.append(round(gain, 6))
         envelopes.append(row)
     return envelopes
+
+
+def equal_power_mix(a: list[float], b: list[float]) -> list[float]:
+    """等功率交叉淡化：a 从 1→0、b 从 0→1，两路能量和恒定（不会中间掉音量）。
+
+    用于段边界的音频衔接（FinalCut 的 audio_crossfade_ms）。
+    """
+    import math
+    n = min(len(a), len(b))
+    if n <= 0:
+        return []
+    out = []
+    for index in range(n):
+        phase = (index + 0.5) / float(n) * (math.pi / 2.0)
+        out.append(float(a[index]) * math.cos(phase) + float(b[index]) * math.sin(phase))
+    return out
 
 
 def apply_limiter(peak: float, *, ceiling: float = 0.99) -> float:

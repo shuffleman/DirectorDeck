@@ -117,6 +117,17 @@ class ExampleTest(unittest.TestCase):
                    if n["class_type"] == "DirectorDeck_FinalCut")
         self.assertIn("segment_2", cut["inputs"])
 
+    def test_m7_crossfade(self):
+        graph = load("m7_crossfade_api.json")
+        self._check(graph)
+        cut = next(n for n in graph.values()
+                   if n["class_type"] == "DirectorDeck_FinalCut")
+        self.assertEqual(int(cut["inputs"]["audio_crossfade_ms"]), 80)
+        self.assertIn("segment_2", cut["inputs"])
+        takes = [n for n in graph.values()
+                 if n["class_type"] == "DirectorDeck_DirectorTake"]
+        self.assertEqual(len(takes), 2)
+
     def test_m6_mix_rules(self):
         graph = load("m6_mix_rules_api.json")
         self._check(graph)

@@ -1,5 +1,5 @@
 {
-  "id": "24f65ab2-c29f-468e-b04a-5c488631e5dd",
+  "id": "4a2b6378-5d1e-4219-b19f-c9d76cd97e3d",
   "revision": 0,
   "last_node_id": 50,
   "last_link_id": 13,
@@ -1038,6 +1038,15 @@
             "name": "audio_from_source"
           },
           "link": null
+        },
+        {
+          "localized_name": "audio_crossfade_ms",
+          "name": "audio_crossfade_ms",
+          "type": "INT",
+          "widget": {
+            "name": "audio_crossfade_ms"
+          },
+          "link": null
         }
       ],
       "outputs": [
@@ -1073,7 +1082,8 @@
       },
       "widgets_values": [
         true,
-        true
+        true,
+        0
       ]
     },
     {

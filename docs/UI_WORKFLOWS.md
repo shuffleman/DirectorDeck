@@ -61,6 +61,8 @@
 | 加数字人锁音 | 新建锁音器并接 `cast`，`cast_policy` 自动切 `replace` |
 | 加段级剧本 | 新建段级剧本并接 `brief`，`brief_policy` 自动切 `replace` |
 | 重抽选中段 | 随机换该段 seed 并立即排队（上游未变的段会被 ComfyUI 缓存复用） |
+| 切换混音模式 | 在选中生成器所连的 VoiceLock 上循环切换 `auto_duck / priority / sum` |
+| duck -2dB / +2dB | 调整该 VoiceLock 的 `duck_db`（-24~0 之间，0.5 步进） |
 | 查看段清单 | 从 `/directordeck/segments` 拉最近 20 条段记录（🔒=锁音、✨=二采） |
 
 ## 常见问题

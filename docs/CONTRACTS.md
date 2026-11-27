@@ -154,6 +154,9 @@
   每路还有 `gain_db`（角色行第 3 参）与 `priority`（第 4 参）。
 - **运行期字段**：`roles[i].audio_data`（AUDIO 张量）只在进程内传递，写盘/进 JSON 时会由
   `policy._serializable_cast()` 剔除；落盘的 cast 只有 `id/name/start/gain_db/priority/voice` 和 `mix`。
+- **跨段混音上下文（0.2.4）**：生成器在段运行期仓库和缓存里额外保存
+  `mix_context = {gain_state: {角色: 结尾增益}, tail: 尾音, sample_rate, limiter}`；
+  下一段的 `build_audio_track(previous=mix_context)` 用它初始化增益包络，段边界不会重置 ducking。
 - 锁音保真的验收口径：用**包络相关 + 频带结构**，不用样点相关——H3 的音频 VAE 是
   神经编解码器，解码会重建波形相位。
 
@@ -346,7 +349,7 @@ segment_fingerprint = "sha1:" + sha1(canonical_json({
 | 10 | `DirectorDeck_SeamFixer` | IMAGE + STRING | prev_images、cur_images、cur_head + optional: enabled、window、max_add、gain_limit |
 | 11 | `DirectorDeck_SegmentCache` | SEGMENT + STRING | segment、mode(status/store/clear)、scope（可选） |
 | 12 | `DirectorDeck_Refiner` | SEGMENT + IMAGE + AUDIO | bundle、segment、images、audio + optional: mode(latent_2nd/lanczos2x)、denoise、steps、sampler_name、scheduler、upscale |
-| 13 | `DirectorDeck_FinalCut` | IMAGE + AUDIO + MANIFEST | segment_1/images_1/audio_1（必填）+ segment_2..4/images_2..4/audio_2..4（可选）+ save_manifest、audio_from_source（M4） |
+| 13 | `DirectorDeck_FinalCut` | IMAGE + AUDIO + MANIFEST | segment_1/images_1/audio_1（必填）+ segment_2..4/images_2..4/audio_2..4（可选）+ save_manifest、audio_from_source、audio_crossfade_ms（0.2.4） |
 | 14 | `DirectorDeck_OutputLibrary`（可选） | path+FILE | segment/manifest、dir、naming |
 | 15 | `DirectorDeck_PromptSmith`（可选） | STRING | template/task、remote provider（默认关） |
 | 16 | `DirectorDeck_DirectorRunner`（M4，可选） | ALL | plan/config、run_mode |

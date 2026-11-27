@@ -48,7 +48,7 @@ def _ffmpeg() -> str:
 
 def save(cache_root: str, fingerprint: str, *, images: torch.Tensor,
          audio: dict, latent_handoff: dict | None, lock_source_audio: dict | None,
-         meta: dict) -> dict:
+         mix_context: dict | None, meta: dict) -> dict:
     """把一段的产物写进磁盘缓存，返回路径字典。"""
     if not available():
         return {}
@@ -87,12 +87,19 @@ def save(cache_root: str, fingerprint: str, *, images: torch.Tensor,
     if lock_source_audio:
         payload["lock_waveform"] = lock_source_audio["waveform"].detach().float().cpu().numpy()
         payload["lock_sample_rate"] = np.array(int(lock_source_audio["sample_rate"]), dtype=np.int64)
+    if mix_context and mix_context.get("tail") is not None:
+        # 跨段混音上下文：尾音波形 + 限幅系数（增益状态存 JSON，纯数据）。
+        payload["mix_tail"] = mix_context["tail"].detach().float().cpu().numpy()
+        payload["mix_limiter"] = np.array(float(mix_context.get("limiter", 1.0)), dtype=np.float32)
     np.savez(paths["npz"], **payload)
 
     # 3) 元数据：段结果 + 画面尺寸（读回解码要用）。
     meta = dict(meta or {})
     meta["_cache"] = {"frames": int(array.shape[0]), "height": height, "width": width,
                       "fingerprint": fingerprint, "schema": cache_lib.CACHE_SCHEMA}
+    if mix_context:
+        meta["mix_gain_state"] = dict(mix_context.get("gain_state") or {})
+        meta["mix_sample_rate"] = int(mix_context.get("sample_rate") or 32000)
     with open(paths["json"], "w", encoding="utf-8") as fh:
         json.dump(meta, fh, ensure_ascii=False, indent=2)
     return paths
@@ -145,8 +152,17 @@ def load(cache_root: str, fingerprint: str) -> dict | None:
                     "waveform": torch.from_numpy(np.array(data["lock_waveform"])),
                     "sample_rate": int(np.array(data["lock_sample_rate"])),
                 }
+            mix_context = None
+            if "mix_tail" in data:
+                mix_context = {
+                    "tail": torch.from_numpy(np.array(data["mix_tail"])),
+                    "gain_state": dict(meta.get("mix_gain_state") or {}),
+                    "sample_rate": int(meta.get("mix_sample_rate") or 32000),
+                    "limiter": float(np.array(data["mix_limiter"])),
+                }
         return {"images": images, "audio": audio, "latent_handoff": latent_handoff,
-                "lock_source_audio": lock_source_audio, "meta": meta, "paths": paths}
+                "lock_source_audio": lock_source_audio, "mix_context": mix_context,
+                "meta": meta, "paths": paths}
     except Exception as exc:  # 缓存坏了就当没命中，不要影响出片
         print(f"[DirectorDeck] 缓存读取失败（按未命中处理）：{exc}")
         return None

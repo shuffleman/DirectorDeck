@@ -116,6 +116,26 @@ class MixGainsTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             audio.mix_gains([[1.0]], mode="nope")
 
+    def test_initial_gains_continue_envelope(self):
+        # 第二段开头：B 从上一段结束时的 0.45 接着算，而不是弹回 1.0。
+        energies = [[1.0] * 10, [1.0] * 10]
+        gains = audio.mix_gains(energies, [2, 1], mode="priority",
+                               duck_db=-8.0, attack_ms=10.0, release_ms=200.0,
+                               initial_gains=[1.0, 0.45])
+        self.assertGreater(gains[1][0], 0.39)
+        self.assertLess(gains[1][0], 0.45)  # 从 0.45 继续往下压，不弹回 1.0
+        # A 从 1.0 起步，保持不变。
+        self.assertGreater(gains[0][0], 0.999)
+
+    def test_equal_power_mix_weights(self):
+        # 权重满足 cos²+sin²=1：交叉结束时应完全变成 b。
+        mixed = audio.equal_power_mix([1.0] * 8, [0.0] * 8)
+        self.assertLess(mixed[0], 1.0)
+        self.assertLess(mixed[-1], 0.1)
+        reversed_mix = audio.equal_power_mix([0.0] * 8, [1.0] * 8)
+        self.assertLess(reversed_mix[0], 0.1)
+        self.assertGreater(reversed_mix[-1], 0.9)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -26,6 +26,9 @@ const I18N = {
     addBrief: "加段级剧本",
     reroll: "重抽选中段",
     segments: "查看段清单",
+    mixMode: "切换混音模式",
+    duckDown: "duck -2dB",
+    duckUp: "duck +2dB",
     help: "帮助",
     close: "关闭",
     needTake: "请先选中一个“视频生成器”节点（或先创建一个）",
@@ -37,6 +40,9 @@ const I18N = {
     nextAdded: "已添加第 N 段，policy 全填 inherit/guide_tail",
     overrideAdded: "已添加覆盖节点并把 policy 切到 replace",
     rerolled: "已换种子并排队重抽",
+    mixCycled: "混音模式：",
+    duckChanged: "duck 电平：",
+    needMixNode: "请先选中“数字人锁音器”（或接到它的视频生成器）",
     helpText:
       "用法：\n1) 先放好 模型加载器 / 全局配置 / 剧本加载器 / 视频生成器；\n2) 选中某个“视频生成器”，点“添加下一段”自动接链；\n3) 想单独换素材/音色/剧本，点对应按钮，会把 policy 自动切到 replace；\n4) 想重抽某段，选中它点“重抽选中段”。",
   },
@@ -48,6 +54,9 @@ const I18N = {
     addBrief: "Add segment brief",
     reroll: "Reroll selected",
     segments: "Segment history",
+    mixMode: "Cycle mix mode",
+    duckDown: "duck -2dB",
+    duckUp: "duck +2dB",
     help: "Help",
     close: "Close",
     needTake: "Select a DirectorTake node first",
@@ -59,6 +68,9 @@ const I18N = {
     nextAdded: "Next segment added (policies: inherit / guide_tail)",
     overrideAdded: "Override node added (policy set to replace)",
     rerolled: "Seed changed and queued",
+    mixCycled: "Mix mode: ",
+    duckChanged: "Duck level: ",
+    needMixNode: "Select a VoiceLock (or a Take connected to one) first",
     helpText:
       "Workflow:\n1) Place ModelLoader / Config / ScriptDesk / DirectorTake;\n2) Select a DirectorTake and click 'Add next segment' to chain it;\n3) Click override buttons to add assets/voice/brief nodes (policy auto = replace);\n4) Select a segment and click 'Reroll' to re-generate with a new seed.",
   },
@@ -282,6 +294,58 @@ function showHelp() {
   });
 }
 
+// ------------------------------------------------------------------ 混音快捷控件
+// 目标：不用点开锁音器，直接改 mix_mode / duck_db（对选中段或它接的 VoiceLock 生效）。
+const MIX_MODES = ["auto_duck", "priority", "sum"];
+
+function selectedMixNode() {
+  // 1) 选中的就是锁音器
+  const selected = app.canvas?.selected_nodes || {};
+  for (const id of Object.keys(selected)) {
+    const node = selected[id];
+    if (node && node.type === "DirectorDeck_VoiceLock") return node;
+  }
+  // 2) 选中的是生成器：顺着 cast 输入找到上游锁音器
+  const take = selectedTake();
+  if (take) {
+    const idx = inputIndex(take, "cast");
+    if (idx >= 0) {
+      const linkId = take.inputs[idx]?.link;
+      if (linkId != null) {
+        const link = app.graph.links?.[linkId];
+        const origin = link ? app.graph.getNodeById(link.origin_id) : null;
+        if (origin && origin.type === "DirectorDeck_VoiceLock") return origin;
+      }
+    }
+  }
+  // 3) 兜底：画布上最后一个锁音器
+  const locks = graphNodes("DirectorDeck_VoiceLock");
+  return locks.length ? locks[locks.length - 1] : null;
+}
+
+function cycleMixMode() {
+  const node = selectedMixNode();
+  if (!node) return toast(t("needMixNode"), false);
+  const widgetRef = widget(node, "mix_mode");
+  if (!widgetRef) return toast(t("failed"), false);
+  const current = String(widgetRef.value || "auto_duck");
+  const next = MIX_MODES[(MIX_MODES.indexOf(current) + 1) % MIX_MODES.length];
+  widgetRef.value = next;
+  app.graph.setDirtyCanvas(true, true);
+  toast(`${t("mixCycled")}${next}`);
+}
+
+function adjustDuck(delta) {
+  const node = selectedMixNode();
+  if (!node) return toast(t("needMixNode"), false);
+  const widgetRef = widget(node, "duck_db");
+  if (!widgetRef) return toast(t("failed"), false);
+  const value = Math.max(-24, Math.min(0, Number(widgetRef.value || -8) + delta));
+  widgetRef.value = Math.round(value * 2) / 2;
+  app.graph.setDirtyCanvas(true, true);
+  toast(`${t("duckChanged")}${widgetRef.value}dB`);
+}
+
 // ------------------------------------------------------------------ 面板 UI
 function buildPanel() {
   const panel = document.createElement("div");
@@ -304,6 +368,9 @@ function buildPanel() {
     [() => t("addAssets"), () => addOverride("assets")],
     [() => t("addVoice"), () => addOverride("voice")],
     [() => t("addBrief"), () => addOverride("brief")],
+    [() => t("mixMode"), cycleMixMode],
+    [() => t("duckDown"), () => adjustDuck(-2)],
+    [() => t("duckUp"), () => adjustDuck(2)],
     [() => t("reroll"), rerollSelected],
     [() => t("segments"), showSegments],
     [() => t("help"), showHelp],
