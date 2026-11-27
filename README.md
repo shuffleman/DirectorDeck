@@ -16,8 +16,8 @@ ComfyUI 节点库：**AI 短剧导演台**。把「模型 + 素材 + 剧本 + �
   段边界交叉淡化、跨段增益/限幅连续性。
 - **抽卡缓存**：画面级 mp4 + 音轨/latent npz 磁盘缓存，命中即跳过采样；TTS 音频内容参与指纹。
 - **本地 TTS**：可接 ComfyUI-Breeze-TTS-2；台词表节点一键多角色配音并直接输出可锁音的 CAST。
-- **编剧台（Skill）**：加载 `skills/` 里的规则包，把小说/梗概交给本地或远程 LLM 写成剧本，
-  自动对齐素材库图片槽和角色/音色库，输出可直连生成器的剧本与 TTS 台词表。
+- **外部剧本导入**：自己写/外部生成的剧本（文本、JSON、H3 V6）粘进导入节点，
+  自动匹配素材库的角色/场景/音频，并在面板一键生成整条视频生成链。
 - **导演台面板**：加下一段、加覆盖、重抽、看段清单、切换混音/调 duck 电平。
 
 ## 节点
@@ -36,7 +36,7 @@ ComfyUI 节点库：**AI 短剧导演台**。把「模型 + 素材 + 剧本 + �
 | `DirectorDeck_SegmentCache` | 抽卡记录（status/store/clear，只存元数据） |
 | `DirectorDeck_VoiceLock` | 数字人锁音器：角色→音频槽+时间轴起点（+增益/优先级）；多角色 ducking / 混音 |
 | `DirectorDeck_TTSBooth` | TTS 台词表：一张台词表 → 多角色配音 + 可锁音 CAST（可选依赖 Breeze-TTS-2） |
-| `DirectorDeck_ScriptSmith` | 编剧台：加载 skill + 小说 → 本地/远程 LLM 写剧本 → 可生成剧本 + TTS 台词表 |
+| `DirectorDeck_ScriptImport` | 剧本导入：外部剧本（文本/JSON/H3 V6）→ 自动匹配角色/场景/音频 → 可生成剧本 |
 | `DirectorDeck_Refiner` | 二采工具：低 denoise 再采样（音频锁定）或 lanczos 放大 |
 
 ## 快速开始
@@ -58,7 +58,7 @@ ComfyUI 节点库：**AI 短剧导演台**。把「模型 + 素材 + 剧本 + �
 | `DirectorDeck_M9_台词表配音.json` | 台词表一键多角色配音 → 锁音 |
 | `DirectorDeck_M10_台词自动排期.json` | 不写起始秒：按句自动分段 + 自动排期 → 锁音 |
 | `DirectorDeck_M11_超长两段衔接.json` | 台词超长提醒 + 两段复用同一份 CAST 自动衔接 |
-| `DirectorDeck_M12_编剧台.json` | Skill + 小说 → 剧本/TTS → 锁音生成 |
+| `DirectorDeck_M13_剧本导入.json` | 外部剧本导入 + 素材自动匹配 + 两段链生成 |
 
 ## 使用说明
 
@@ -112,24 +112,26 @@ ComfyUI 节点库：**AI 短剧导演台**。把「模型 + 素材 + 剧本 + �
 右下角「DirectorDeck 导演台」：添加下一段、加素材/锁音/剧本覆盖、重抽选中段、查看段清单、
 切换混音模式、duck ±2dB（自动作用到选中生成器所连的锁音器）、中英双语。
 
-### 6. Skill 小说转剧本（编剧台）
+### 6. 外部剧本导入 + 一键建生成器
 
-`DirectorDeck_ScriptSmith` 把小说/梗概变成可拍的剧本：
+剧本由你自己写或外部工具生成，`DirectorDeck_ScriptImport` 负责导入、对齐、建链：
 
-1. **选 skill**：`skills/` 已预置 **内置编剧规则**、**漫剧老李全集（11 个 skill）** 和
-   **H3 V6 分段提示词模板**，下拉框直接选；也可用 `python tools/import_skill.py <路径>`
-   导入外部 skill（支持目录式 `SKILL.md` 或单个 `.md` 提示词模板）。
-2. **选模型**：`provider` 选本地或远程（都走 OpenAI 兼容接口）：
-   - 本地：LM Studio `http://127.0.0.1:1234/v1`、Ollama `http://127.0.0.1:11434/v1`、vLLM 等；
-   - 远程：填 `base_url`（如 `https://api.deepseek.com/v1`）和模型名，Key 放环境变量
-     （`api_key_env` 填变量名，默认 `OPENAI_API_KEY`）。
-   - `model` 留空会自动取 `/models` 第一个；没有真实模型时可用 `python tools/mock_llm.py` 联调。
-3. **接素材**：可选把素材库（9 图槽）和角色/音色库接进来，模型只会用真实存在的
-   `@图片N`/角色名/音频槽；输出 `character_map` 可核对映射。
-4. **出结果**：`script` 接视频生成器的 `script`，`voice_lines` 接 TTS 台词表的 `lines`，
-   即可一键走「小说 → 剧本 → 配音 → 锁音生成」。
-5. **语言**：`language` 选中文/English/日本語/한국어/跟随原文；`output_format` 可选
-   DirectorDeck 剧本或 H3 V6 分段提示词。
+1. **粘贴剧本**：`script` 支持三种格式，`format` 选“自动识别”即可：
+   - DirectorDeck 剧本（`第N段（X秒）` + `角色：台词` + 可选 `@图片N`）；
+   - JSON 剧本（`characters` + `segments`）；
+   - H3 V6 分段提示词（`【第N段｜X秒】` + `<d>` 台词）。
+2. **自动匹配素材**：接上素材库（9 图槽）和/或角色音色库后：
+   - 角色名 → 图片槽（名字/用途相似度，匹配不上按顺序兜底）；
+   - 段落场景关键词 → 背景/场景槽；
+   - 角色名 → 角色音色库的音频槽（没接角色库就给顺序建议）；
+   - 匹配结果直接写回剧本的 `@图片N`，并输出 `mapping` 对照表供复核。
+3. **输出**：`script` 接视频生成器的 `script`；`segment_count` 告诉前端要建几段。
+4. **一键建生成器**：画布上先放一个“视频生成器”当模板，选中“剧本导入”节点，
+   面板点 **按剧本建生成器** → 自动按段数创建/接线（复制模型、配置、素材、音色接法，
+   自动串 `previous_segment`，后续段用 latent 续写）；再点 **补全合并输出** →
+   自动生成 FinalCut + CreateVideo + SaveVideo。
+
+画布示例：`examples/ui/DirectorDeck_M13_剧本导入.json`。
 
 ## 文档
 

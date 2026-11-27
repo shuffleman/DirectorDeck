@@ -191,28 +191,21 @@ class ExampleTest(unittest.TestCase):
         self.assertEqual(take["inputs"]["cast_policy"], "replace")
         self.assertIn("cast", take["inputs"])
 
-    def test_m12_scriptsmith(self):
-        graph = load("m12_scriptsmith_api.json")
+    def test_m13_import(self):
+        graph = load("m13_import_api.json")
         self._check(graph)
-        classes = {n["class_type"] for n in graph.values()}
-        for expected in ("DirectorDeck_ScriptSmith", "BreezeTTS2LoadModel",
-                         "DirectorDeck_TTSBooth", "DirectorDeck_AssetShelf",
-                         "DirectorDeck_DirectorTake", "DirectorDeck_FinalCut",
-                         "SaveVideo"):
-            self.assertIn(expected, classes)
-        smith = next(n for n in graph.values()
-                     if n["class_type"] == "DirectorDeck_ScriptSmith")
-        self.assertEqual(smith["inputs"]["skill"], "directordeck_screenwriter")
-        self.assertIn("novel", smith["inputs"])
-        self.assertEqual(smith["inputs"]["language"], "中文")
-        self.assertEqual(smith["inputs"]["output_format"], "DirectorDeck 剧本")
-        self.assertIn("assets", smith["inputs"])
-        take = next(n for n in graph.values()
-                    if n["class_type"] == "DirectorDeck_DirectorTake")
-        self.assertEqual(take["inputs"]["assets_policy"], "replace")
-        self.assertEqual(take["inputs"]["cast_policy"], "replace")
-        self.assertIn("script", take["inputs"])
-        self.assertIn("cast", take["inputs"])
+        importer = next(n for n in graph.values()
+                        if n["class_type"] == "DirectorDeck_ScriptImport")
+        self.assertIn("第1段", importer["inputs"]["script"])
+        self.assertEqual(importer["inputs"]["format"], "自动识别")
+        self.assertTrue(importer["inputs"]["match_assets"])
+        self.assertIn("assets", importer["inputs"])
+        takes = [n for n in graph.values()
+                 if n["class_type"] == "DirectorDeck_DirectorTake"]
+        self.assertEqual(len(takes), 2)
+        second = next(n for n in takes if n["inputs"]["segment_index"] == 2)
+        self.assertEqual(second["inputs"]["continuity"], "latent_tail")
+        self.assertIn("previous_segment", second["inputs"])
 
     def test_m7_crossfade(self):
         graph = load("m7_crossfade_api.json")

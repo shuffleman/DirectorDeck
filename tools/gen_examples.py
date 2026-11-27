@@ -682,72 +682,66 @@ def m11_tts_chain() -> dict:
     }
     return graph
 
+def m13_import_chain() -> dict:
+    """M13 外部剧本导入 + 素材自动匹配 + 两段链生成。
 
-def m12_scriptsmith() -> dict:
-    """M12 编剧台：skill + 小说 -> 剧本 -> TTS -> 锁音生成。
-
-    ScriptSmith 调本地 OpenAI 兼容模型（这里默认指向 tools/mock_llm.py 联调服务），
-    输出 script（接生成器）和 voice_lines（接 TTS 台词表）；素材库对齐 @图片1/2。
+    剧本由外部写好（这里直接给文本），ScriptImport 负责：
+    - 解析“第N段（X秒）+ 角色：台词”；
+    - 按素材库把角色匹配到 @图片1/2；
+    - 输出 script 接两段生成器（第 2 段 latent 衔接）。
     """
-    novel = (
-        "雨夜，林澈撑着伞回到老宅门口。门内走出一个男人，是十年前失踪的哥哥。"
-        "哥哥只说了一句：你终于回来了。"
+    external_script = (
+        "第1段（5秒）\n"
+        "[画面] 雨夜，女主撑着伞站在老宅台阶下，男主从门内走出。\n"
+        "女主：你终于回来了。\n"
+        "男主：这十年，我一直在找你。\n\n"
+        "第2段（5秒）\n"
+        "[画面] 两人在雨中对视，镜头缓慢推近女主的脸。\n"
+        "女主：先进屋吧。"
     )
+    take1 = {"class_type": "DirectorDeck_DirectorTake",
+             "inputs": {"bundle": ["1", 0], "config": ["2", 0],
+                        "script": ["3", 0], "assets": ["8", 0],
+                        "segment_index": 1, "bundle_policy": "provided",
+                        "config_policy": "inherit", "assets_policy": "replace",
+                        "brief_policy": "inherit", "cast_policy": "inherit",
+                        "continuity": "start", "seed": 0, "cache_mode": "auto"}}
+    take2 = {"class_type": "DirectorDeck_DirectorTake",
+             "inputs": {"bundle": ["1", 0], "config": ["2", 0],
+                        "script": ["3", 0], "assets": ["8", 0],
+                        "segment_index": 2, "bundle_policy": "inherit",
+                        "config_policy": "inherit", "assets_policy": "inherit",
+                        "brief_policy": "inherit", "cast_policy": "inherit",
+                        "continuity": "latent_tail", "seed": 0, "cache_mode": "auto",
+                        "previous_segment": ["10", 0]}}
     graph = {
         "1": loader_node(),
         "2": config_node(),
-        "3": {"class_type": "DirectorDeck_ScriptSmith",
-              "inputs": {
-                  "skill": "directordeck_screenwriter", "skill_path": "",
-                  "novel": novel, "language": "中文",
-                  "output_format": "DirectorDeck 剧本",
-                  "segment_seconds": 5.0, "max_segments": 1,
-                  "provider": "本地 OpenAI 兼容 (LM Studio/Ollama)",
-                  "base_url": "http://127.0.0.1:18081/v1",
-                  "model": "mock-screenwriter",
-                  "api_key_env": "OPENAI_API_KEY",
-                  "temperature": 0.7, "max_tokens": 4096, "timeout": 180,
-                  "include_refs": False, "max_context_chars": 60000,
-                  "assets": ["8", 0]}},
-        "4": {"class_type": "BreezeTTS2LoadModel",
-              "inputs": {"model": "int8 hybrid (recommended)", "dtype": "auto",
-                         "device": "auto", "attention": "auto",
-                         "decode_mode": "eager", "download_if_missing": False}},
-        "5": {"class_type": "DirectorDeck_TTSBooth",
-              "inputs": {"breeze_model": ["4", 0], "lines": ["3", 2],
-                         "auto_start": True, "auto_split": True,
-                         "pause_ms": 300, "chars_per_second": 4.5,
-                         "max_seconds": 0.0, "mix_mode": "priority",
-                         "duck_db": -8.0, "attack_ms": 60, "release_ms": 200,
-                         "cfg_scale": 4.0, "max_new_tokens": 1500,
-                         "temperature": 0.9, "top_k": 50, "top_p": 1.0,
-                         "repetition_penalty": 1.1, "depth_temperature": 0.9,
-                         "depth_top_k": 50, "depth_top_p": 1.0,
-                         "seed": 20261201}},
+        "3": {"class_type": "DirectorDeck_ScriptImport",
+              "inputs": {"script": external_script, "format": "自动识别",
+                         "segment_seconds": 5.0, "match_assets": True,
+                         "match_scenes": True, "min_score": 0.55,
+                         "assets": ["8", 0]}},
         "6": {"class_type": "LoadImage", "inputs": {"image": "11.png"}},
         "7": {"class_type": "LoadImage", "inputs": {"image": "睡衣.png"}},
         "8": {"class_type": "DirectorDeck_AssetShelf",
               "inputs": {"image_1": ["6", 0], "image_2": ["7", 0]}},
-        "10": {"class_type": "DirectorDeck_DirectorTake",
-               "inputs": {"bundle": ["1", 0], "config": ["2", 0],
-                          "script": ["3", 0], "segment_index": 1,
-                          "bundle_policy": "provided", "config_policy": "inherit",
-                          "assets_policy": "replace", "brief_policy": "inherit",
-                          "cast_policy": "replace", "continuity": "start",
-                          "seed": 0, "cache_mode": "auto",
-                          "assets": ["8", 0], "cast": ["5", 0]}},
+        "10": take1,
+        "11": take2,
         "40": {"class_type": "DirectorDeck_FinalCut",
                "inputs": {"segment_1": ["10", 0], "images_1": ["10", 1],
-                          "audio_1": ["10", 2], "save_manifest": True,
-                          "audio_from_source": True, "audio_crossfade_ms": 0}},
+                          "audio_1": ["10", 2],
+                          "segment_2": ["11", 0], "images_2": ["11", 1],
+                          "audio_2": ["11", 2], "save_manifest": True,
+                          "audio_from_source": False, "audio_crossfade_ms": 80}},
         "41": {"class_type": "CreateVideo",
                "inputs": {"images": ["40", 0], "fps": 24.0, "audio": ["40", 1],
                           "codec": "h264"}},
         "42": {"class_type": "SaveVideo",
-               "inputs": {"video": ["41", 0], "filename_prefix": "DirectorDeck/M12_scriptsmith",
+               "inputs": {"video": ["41", 0], "filename_prefix": "DirectorDeck/M13_import",
                           "format": "auto", "codec": "auto"}},
         "43": {"class_type": "SaveAudio",
-               "inputs": {"audio": ["40", 1], "filename_prefix": "DirectorDeck/M12_scriptsmith_mix"}},
+               "inputs": {"audio": ["40", 1], "filename_prefix": "DirectorDeck/M13_import_mix"}},
     }
     return graph
 
@@ -767,7 +761,7 @@ def main() -> int:
                         ("m9_tts_booth_api", m9_tts_booth()),
                         ("m10_tts_auto_api", m10_tts_auto()),
                         ("m11_tts_chain_api", m11_tts_chain()),
-                        ("m12_scriptsmith_api", m12_scriptsmith())):
+                        ("m13_import_api", m13_import_chain())):
         path = os.path.join(EXAMPLE_DIR, name + ".json")
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(graph, fh, ensure_ascii=False, indent=2)

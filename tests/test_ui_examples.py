@@ -27,7 +27,7 @@ EXPECTED = {
     "DirectorDeck_M9_台词表配音.json": {"DirectorDeck_TTSBooth", "DirectorDeck_FinalCut"},
     "DirectorDeck_M10_台词自动排期.json": {"DirectorDeck_TTSBooth", "DirectorDeck_DirectorTake"},
     "DirectorDeck_M11_超长两段衔接.json": {"DirectorDeck_TTSBooth", "DirectorDeck_FinalCut"},
-    "DirectorDeck_M12_编剧台.json": {"DirectorDeck_ScriptSmith", "DirectorDeck_DirectorTake"},
+    "DirectorDeck_M13_剧本导入.json": {"DirectorDeck_ScriptImport", "DirectorDeck_DirectorTake"},
 }
 
 

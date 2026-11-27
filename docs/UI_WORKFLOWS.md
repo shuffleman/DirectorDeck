@@ -1,6 +1,6 @@
 # DirectorDeck 画布工作流说明
 
-> 5 个 UI 格式工作流在 `examples/ui/`，在 ComfyUI 里用 **Workflow → Open**（或直接拖进画布）打开。
+> 11 个 UI 格式工作流在 `examples/ui/`，在 ComfyUI 里用 **Workflow → Open**（或直接拖进画布）打开。
 > 对应的 API 格式在 `examples/*.json`，两者逐输入校验一致（`tools/make_ui_workflows.py` 的 round-trip 校验）。
 
 | 工作流 | 用到的能力 | 建议场景 |
@@ -16,6 +16,7 @@
 | `DirectorDeck_M9_台词表配音.json` | 台词表一键多角色配音 → 锁音 | 台词都是文本、想少摆节点 |
 | `DirectorDeck_M10_台词自动排期.json` | 不写起始秒，按句自动分段/自动排期 | 懒得算每句起点、想先跑起来 |
 | `DirectorDeck_M11_超长两段衔接.json` | 超长提醒 + 多段复用同一份 CAST 衔接 | 台词总长超过一段的时长 |
+| `DirectorDeck_M13_剧本导入.json` | 外部剧本导入 + 素材自动匹配 | 剧本在外部写、想一键建生成链 |
 
 ## 打开后先改什么
 
@@ -36,6 +37,18 @@
 | `continuity` | `start`（第 1 段）/ `guide_tail` / `latent_tail` / `none` | `guide_tail`=RGB 尾帧+尾音引导；`latent_tail`=直接搬上一段 latent 尾部 token（更快，0.2.1）；`none`=新镜头硬切，不引导 |
 
 > 默认值是 `unset`：不选就报 `DD-E001`，这是故意的，防止“以为继承了其实没有”。
+
+## 外部剧本导入 + 一键建生成器
+
+1. 画布放一个「剧本导入」节点（`DirectorDeck_M13_剧本导入.json` 已带），
+   把外部剧本粘进 `script`：支持 DirectorDeck 文本、JSON、H3 V6；`format` 保持“自动识别”；
+2. 可选把素材库（9 图槽）和/或角色音色库接进来；节点会输出 `mapping` 对照表，
+   把角色 → @图片N、段落 → 场景图、角色 → 音频槽都列出来（不想匹配就关 `match_assets`）；
+3. 画布上保留一个「视频生成器」当模板，选中「剧本导入」节点，点面板 **按剧本建生成器**：
+   按 `segment_count` 自动创建 N 段、复制模型/配置/素材/音色接法、串 `previous_segment`；
+4. 再点 **补全合并输出**：自动生成 FinalCut（最多 4 段）+ CreateVideo + SaveVideo。
+
+> 建链按钮只做“接线和参数”，不替你选模型；模型加载器/配置/素材的接法来自模板节点。
 
 ## 接本地 TTS（Breeze-TTS-2）
 

@@ -15,6 +15,7 @@ import { api } from "../../scripts/api.js";
 
 const PREFIX = "DirectorDeck_";
 const TAKE = PREFIX + "DirectorTake";
+const SCRIPT_IMPORT = PREFIX + "ScriptImport";
 
 // ------------------------------------------------------------------ i18n
 const I18N = {
@@ -43,6 +44,13 @@ const I18N = {
     mixCycled: "混音模式：",
     duckChanged: "duck 电平：",
     needMixNode: "请先选中“数字人锁音器”（或接到它的视频生成器）",
+    buildGen: "按剧本建生成器",
+    buildOutput: "补全合并输出",
+    needImport: "请先选中“剧本导入（素材自动匹配）”节点（或先在画布上放一个）",
+    needTemplate: "请先在画布上放一个“视频生成器”作为模板（模型/配置/素材接法会复制）",
+    builtGenerators: "已按剧本创建 N 段视频生成器",
+    builtOutput: "已补全 FinalCut / 视频输出节点",
+    noTakes: "画布上没有“视频生成器”，先放一个或点“按剧本建生成器”",
     helpText:
       "用法：\n1) 先放好 模型加载器 / 全局配置 / 剧本加载器 / 视频生成器；\n2) 选中某个“视频生成器”，点“添加下一段”自动接链；\n3) 想单独换素材/音色/剧本，点对应按钮，会把 policy 自动切到 replace；\n4) 想重抽某段，选中它点“重抽选中段”。",
   },
@@ -71,6 +79,13 @@ const I18N = {
     mixCycled: "Mix mode: ",
     duckChanged: "Duck level: ",
     needMixNode: "Select a VoiceLock (or a Take connected to one) first",
+    buildGen: "Build Take chain",
+    buildOutput: "Build merge/output",
+    needImport: "Select a ScriptImport node first (or add one to the canvas)",
+    needTemplate: "Place one DirectorTake as a template first (model/config/asset wiring is copied)",
+    builtGenerators: "Created N Take nodes from the script",
+    builtOutput: "FinalCut / video output nodes created",
+    noTakes: "No DirectorTake on canvas. Add one first, or click 'Build Take chain'",
     helpText:
       "Workflow:\n1) Place ModelLoader / Config / ScriptDesk / DirectorTake;\n2) Select a DirectorTake and click 'Add next segment' to chain it;\n3) Click override buttons to add assets/voice/brief nodes (policy auto = replace);\n4) Select a segment and click 'Reroll' to re-generate with a new seed.",
   },
@@ -346,6 +361,141 @@ function adjustDuck(delta) {
   toast(`${t("duckChanged")}${widgetRef.value}dB`);
 }
 
+// ---------------------------------------------------------- 剧本导入 -> 自动建链
+// 目标：外部剧本丢进“剧本导入”节点后，点一下就把 N 个视频生成器按段接好；
+// 再点一下补全 FinalCut + 视频输出。模板节点的模型/配置/素材/音色接法会被复制。
+
+function selectedImportNode() {
+  const selected = app.canvas?.selected_nodes || {};
+  for (const id of Object.keys(selected)) {
+    const node = selected[id];
+    if (node && node.type === SCRIPT_IMPORT) return node;
+  }
+  const imports = graphNodes(SCRIPT_IMPORT);
+  return imports.length ? imports[imports.length - 1] : null;
+}
+
+// 从剧本导入节点的 script 控件里估段数：优先 JSON.segments，其次“第N段”/V6 段头。
+function countScriptSegments(node) {
+  const raw = String(widgetValue(node, "script") || "");
+  try {
+    const data = JSON.parse(raw);
+    if (Array.isArray(data)) return Math.max(1, data.length);
+    if (data && Array.isArray(data.segments)) return Math.max(1, data.segments.length);
+  } catch (e) {
+    // 不是 JSON，继续按文本数段头
+  }
+  const headers = raw.match(/第\s*(?:[0-9]{1,3}|[一二三四五六七八九十]{1,3})\s*[段幕镜场]/g);
+  if (headers && headers.length) return headers.length;
+  const v6 = raw.match(/【\s*第\s*\d+\s*段/g);
+  if (v6 && v6.length) return v6.length;
+  return 1;
+}
+
+function copyWidgets(from, to) {
+  for (const w of from.widgets || []) setWidget(to, w.name, w.value);
+}
+
+// 先试模板节点已有的上游，再试剧本导入节点自己的可选输入（assets/cast 常从那边来）。
+function wireShared(template, scriptNode, target, inputName) {
+  if (copyUpstream(template, target, inputName)) return true;
+  return copyUpstream(scriptNode, target, inputName);
+}
+
+function hasUpstream(node, inputName) {
+  const idx = inputIndex(node, inputName);
+  if (idx < 0) return false;
+  return node.inputs[idx]?.link != null;
+}
+
+function buildGeneratorsFromScript() {
+  const src = selectedImportNode();
+  if (!src) return toast(t("needImport"), false);
+  const template = selectedTake();
+  if (!template) return toast(t("needTemplate"), false);
+  const count = Math.max(1, Math.min(24, countScriptSegments(src)));
+
+  const height = (template.size ? template.size[1] : 520) + 70;
+  const takes = [template];
+  for (let i = 2; i <= count; i += 1) {
+    const node = createNode(TAKE, [template.pos[0], template.pos[1] + (i - 1) * height]);
+    copyWidgets(template, node);
+    takes.push(node);
+  }
+
+  const templateHasAssets = hasUpstream(template, "assets");
+  const templateHasCast = hasUpstream(template, "cast");
+  const templateHasBrief = hasUpstream(template, "brief");
+
+  for (let i = 0; i < takes.length; i += 1) {
+    const node = takes[i];
+    if (i > 0) {
+      copyUpstream(template, node, "bundle");
+      copyUpstream(template, node, "config");
+    }
+    // 共享上游：模板没有的话，从剧本导入节点的 assets/cast 输入借
+    for (const name of ["assets", "cast", "brief"]) wireShared(template, src, node, name);
+
+    linkNodes(src, "script", node, "script");
+    setWidget(node, "segment_index", i + 1);
+    setWidget(node, "seed", 0);
+    setWidget(node, "cache_mode", "auto");
+    if (i === 0) {
+      setWidget(node, "bundle_policy", "provided");
+      setWidget(node, "config_policy", "inherit");
+      setWidget(node, "assets_policy", templateHasAssets ? "replace" : "clear");
+      setWidget(node, "brief_policy", templateHasBrief ? "replace" : "inherit");
+      setWidget(node, "cast_policy", templateHasCast ? "replace" : "inherit");
+      setWidget(node, "continuity", "start");
+    } else {
+      setWidget(node, "bundle_policy", "inherit");
+      setWidget(node, "config_policy", "inherit");
+      setWidget(node, "assets_policy", templateHasAssets ? "inherit" : "clear");
+      setWidget(node, "brief_policy", "inherit");
+      setWidget(node, "cast_policy", templateHasCast ? "inherit" : "inherit");
+      setWidget(node, "continuity", "latent_tail");
+    }
+    if (i > 0) linkNodes(takes[i - 1], "segment", node, "previous_segment");
+  }
+  app.graph.setDirtyCanvas(true, true);
+  toast(`${t("done")}: ${t("builtGenerators").replace("N", String(count))}`);
+}
+
+function buildOutputChain() {
+  let takes = graphNodes(TAKE);
+  if (!takes.length) return toast(t("noTakes"), false);
+  takes = takes.slice().sort((a, b) => {
+    return Number(widgetValue(a, "segment_index") || 0) - Number(widgetValue(b, "segment_index") || 0);
+  });
+  const used = takes.slice(0, 4);
+  const last = takes[takes.length - 1];
+  const x = last.pos[0] + (last.size ? last.size[0] : 360) + 80;
+  const y = last.pos[1];
+
+  const cut = createNode(PREFIX + "FinalCut", [x, y]);
+  setWidget(cut, "save_manifest", true);
+  setWidget(cut, "audio_from_source", true);
+  setWidget(cut, "audio_crossfade_ms", 80);
+  used.forEach((take, index) => {
+    const suffix = `_${index + 1}`;
+    linkNodes(take, "segment", cut, "segment" + suffix);
+    linkNodes(take, "images", cut, "images" + suffix);
+    linkNodes(take, "audio", cut, "audio" + suffix);
+  });
+
+  const video = createNode("CreateVideo", [x + 520, y]);
+  setWidget(video, "fps", 24);
+  linkNodes(cut, "images", video, "images");
+  linkNodes(cut, "audio", video, "audio");
+
+  const save = createNode("SaveVideo", [x + 900, y]);
+  setWidget(save, "filename_prefix", "DirectorDeck/auto_chain");
+  linkNodes(video, "video", save, "video");
+
+  app.graph.setDirtyCanvas(true, true);
+  toast(`${t("done")}: ${t("builtOutput")}`);
+}
+
 // ------------------------------------------------------------------ 面板 UI
 function buildPanel() {
   const panel = document.createElement("div");
@@ -365,6 +515,8 @@ function buildPanel() {
 
   const buttons = [
     [() => t("addNext"), addNextSegment],
+    [() => t("buildGen"), buildGeneratorsFromScript],
+    [() => t("buildOutput"), buildOutputChain],
     [() => t("addAssets"), () => addOverride("assets")],
     [() => t("addVoice"), () => addOverride("voice")],
     [() => t("addBrief"), () => addOverride("brief")],

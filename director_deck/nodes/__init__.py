@@ -15,7 +15,7 @@ from .loader import DirectorDeckModelLoader
 from .planner import DirectorDeckFramePlanner
 from .refiner import DirectorDeckRefiner
 from .script_node import DirectorDeckScriptDesk
-from .script_smith import DirectorDeckScriptSmith
+from .script_import import DirectorDeckScriptImport
 from .seam_fixer import DirectorDeckSeamFixer
 from .shelf import DirectorDeckAssetShelf
 from .take import DirectorDeckTake
@@ -27,6 +27,7 @@ NODE_CLASS_MAPPINGS = {
     "DirectorDeck_DirectorConfig": DirectorDeckConfig,
     "DirectorDeck_AssetShelf": DirectorDeckAssetShelf,
     "DirectorDeck_ScriptDesk": DirectorDeckScriptDesk,
+    "DirectorDeck_ScriptImport": DirectorDeckScriptImport,
     "DirectorDeck_SegmentBrief": DirectorDeckSegmentBrief,
     "DirectorDeck_FramePlanner": DirectorDeckFramePlanner,
     "DirectorDeck_DirectorTake": DirectorDeckTake,
@@ -35,7 +36,6 @@ NODE_CLASS_MAPPINGS = {
     "DirectorDeck_SegmentCache": DirectorDeckSegmentCache,
     "DirectorDeck_VoiceLock": DirectorDeckVoiceLock,
     "DirectorDeck_TTSBooth": DirectorDeckTTSBooth,
-    "DirectorDeck_ScriptSmith": DirectorDeckScriptSmith,
     "DirectorDeck_Refiner": DirectorDeckRefiner,
 }
 
@@ -44,6 +44,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "DirectorDeck_DirectorConfig": "DirectorDeck · 全局配置",
     "DirectorDeck_AssetShelf": "DirectorDeck · 资产管理器",
     "DirectorDeck_ScriptDesk": "DirectorDeck · 剧本加载器",
+    "DirectorDeck_ScriptImport": "DirectorDeck · 剧本导入（素材自动匹配）",
     "DirectorDeck_SegmentBrief": "DirectorDeck · 段级剧本",
     "DirectorDeck_FramePlanner": "DirectorDeck · 帧计划器",
     "DirectorDeck_DirectorTake": "DirectorDeck · 视频生成器",
@@ -52,7 +53,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "DirectorDeck_SegmentCache": "DirectorDeck · 抽卡缓存",
     "DirectorDeck_VoiceLock": "DirectorDeck · 数字人锁音器",
     "DirectorDeck_TTSBooth": "DirectorDeck · TTS 台词表（多角色配音）",
-    "DirectorDeck_ScriptSmith": "DirectorDeck · 编剧台（Skill 小说转剧本）",
     "DirectorDeck_Refiner": "DirectorDeck · 二采工具",
 }
 

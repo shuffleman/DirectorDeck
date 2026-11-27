@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.8.0 — 去掉剧本生成，改为外部剧本导入 + 素材自动匹配 + 一键建生成器（2026-11-28）
+
+### 移除
+- **彻底移除剧本生成相关功能**：`DirectorDeck_ScriptSmith` 编剧台、skill 加载器
+  （`adapters/skill.py`、`skills/` 预置的漫剧老李全集与 V6 模板）、LLM 适配
+  （`adapters/llm.py`）、`tools/import_skill.py` / `tools/preset_bundled_skills.py` /
+  `tools/mock_llm.py`、M12 画布与示例、对应单测与文档。
+
+### 新增
+- **`DirectorDeck_ScriptImport`（剧本导入）**：外部写好的剧本直接粘进来，
+  `format` 支持自动识别 / DirectorDeck 文本 / JSON 剧本 / H3 V6；
+- **素材自动匹配**（`core/asset_match.py`，纯函数 + 单测）：
+  - 角色名 → 素材图片槽（名字/用途相似度，兜底按顺序）；
+  - 段落场景关键词 → 背景/场景槽；
+  - 角色名 → 角色音色库音频槽（没接角色库就给顺序建议）；
+  - 匹配结果写回每段 `@图片N`，输出可核对的 `mapping` 对照表；
+- **前端一键建链**：选中「剧本导入」+ 画布上放一个「视频生成器」当模板，面板
+  **按剧本建生成器** 按 `segment_count` 自动创建 N 段并接好（复制模型/配置/素材/音色接线、
+  串 `previous_segment`、后续段 latent 续写）；**补全合并输出** 自动建
+  FinalCut + CreateVideo + SaveVideo；
+- 新增画布工作流 `DirectorDeck_M13_剧本导入.json` 与 API 示例 `examples/m13_import_api.json`；
+- 新增错误码 `DD-E061`（剧本导入解析失败）。
+
+### 验证（8189 真机，M13）
+- 外部剧本 **2 段**（10.0s），素材库 2 张图 → 角色自动匹配 **2 个**（顺序兜底），
+  音频槽建议 2 个；场景 0 段（2 个槽被角色占用）。
+- 第 1 段 prompt 绑定 `<Picture 1> <Picture 2>`，第 2 段按角色只绑定 `<Picture 1>`；
+- 两段链出片 **260 帧 / 10.83s**（124 + 158 帧，latent 衔接）。
+
 ## 0.7.0 — 预置漫剧老李 Skill 全集 + V6 提示词模板（2026-11-28）
 
 ### 新增

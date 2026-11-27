@@ -211,6 +211,43 @@ def screenplay_to_character_map(screenplay: dict) -> str:
     return "\n".join(rows)
 
 
+def screenplay_from_parsed_script(parsed: dict, *, default_seconds: float = 5.0) -> dict:
+    """把剧本加载器解析出来的 segments 转成 screenplay 结构（供素材匹配用）。
+
+    外部剧本可能没有 JSON，只有“第N段 + 角色：台词”的文本；这里把对白抽成
+    dialogue、其余行留作 actions，角色按首次出现顺序编号 S1/S2...
+    """
+    char_ids: dict[str, str] = {}
+    characters: list[dict] = []
+    segments: list[dict] = []
+    dialogue_line = re.compile(r"^\s*[^\s:：]{1,12}\s*[:：]")
+    for segment in parsed.get("segments") or []:
+        text = str(segment.get("text") or "")
+        action_lines = []
+        for line in text.splitlines():
+            if not line.strip():
+                continue
+            if dialogue_line.match(line):
+                continue
+            action_lines.append(line.strip())
+        dialogue = []
+        for line in segment.get("dialogue") or []:
+            name = str(line.get("character") or "").strip() or "旁白"
+            if name not in char_ids:
+                char_ids[name] = f"S{len(characters) + 1}"
+                characters.append({"id": char_ids[name], "name": name, "image_slot": None,
+                                   "audio_slot": len(characters) + 1, "voice": ""})
+            dialogue.append({"speaker_id": char_ids[name], "speaker": name,
+                             "text": str(line.get("text") or "").strip(), "at": None})
+        segments.append({"index": len(segments) + 1,
+                         "seconds": float(segment.get("seconds") or default_seconds),
+                         "scene": "", "actions": "；".join(action_lines)[:800],
+                         "image_refs": list(segment.get("refs") or []),
+                         "dialogue": dialogue})
+    return {"schema": "DIRECTOR_SCREENPLAY@1", "title": "", "language": "",
+            "characters": characters, "segments": segments, "warnings": []}
+
+
 def v6_to_screenplay(raw: str, *, language: str = "中文") -> dict:
     """把 H3 V6 分段提示词文本转成 screenplay 结构（粗解析，够用就好）。"""
     text = (raw or "").strip()
