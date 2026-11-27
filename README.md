@@ -38,6 +38,19 @@ ComfyUI 节点库：**AI 短剧导演台**。把“模型 + 素材 + 剧本 + �
 > 第 2 段会直接搬上一段 latent 的尾部 token（mask=0 钉住），省掉 RGB 解码/编码的绕路。
 > 可直接跑的 API 示例：`examples/m5_latent_chain_api.json`（画布版画法相同，把 continuity 换成 latent_tail 即可）。
 
+## 抽卡缓存：画面级秒复用（0.2.2）
+
+生成器新增 `cache_mode` 控件：`auto`（默认，命中就复用、没命中生成并写）/ `off` / `reroll`（强制重抽并覆盖）。
+缓存内容是**画面 mp4 + 音轨/latent/锁音源轨 npz + 段元数据 json**，放在
+`output/DirectorDeck/cache/segments/`；指纹覆盖 resolved 输入、提示词、种子、采样参数、引导来源和锁音签名。
+
+| 指标（两段 latent 链） | 结果 |
+|---|---|
+| 冷缓存首次 | 346.7s（正常采样） |
+| 重启 ComfyUI 后同工作流 | 两段全命中，整条 prompt **3.6s（墙钟 5.1s）**，约 **96×** |
+| 画面一致性 | 与首次生成平均像素差 **2.76**（0–255 口径，仅 h264 重编码误差） |
+| 磁盘占用 | 约 8MB/段（mp4 1.5–2.4MB + npz 4.4–5.6MB） |
+
 ## 设计要点（已定稿）
 
 1. **链式分段 + 段级可选覆盖**：每段不接输入=沿用（policy 显式选 `inherit`）；接了=覆盖。
@@ -55,7 +68,7 @@ ComfyUI 节点库：**AI 短剧导演台**。把“模型 + 素材 + 剧本 + �
 | `DirectorDeck_ScriptDesk` | 剧本 → 结构化段落（时长/对白/素材引用） |
 | `DirectorDeck_SegmentBrief` | 段级剧本覆盖（接到生成器 brief 输入） |
 | `DirectorDeck_FramePlanner` | 整条链的 17k+5 帧计划（head/delivery/sample/时间轴） |
-| `DirectorDeck_DirectorTake` | 按段生成；接 `previous_segment` 即自动尾帧+尾音引导、接缝修正 |
+| `DirectorDeck_DirectorTake` | 按段生成；接 `previous_segment` 自动续写（RGB/latent 两种）、接缝修正、**画面级抽卡缓存**（`cache_mode`） |
 | `DirectorDeck_SeamFixer` | 独立接缝修正（也可单独修已有两段） |
 | `DirectorDeck_FinalCut` | 多段合并：自动裁衔接头、拼音轨、写 manifest；可选 `audio_from_source` 用锁音源轨（无损） |
 | `DirectorDeck_SegmentCache` | 抽卡记录（status/store/clear，只存元数据） |

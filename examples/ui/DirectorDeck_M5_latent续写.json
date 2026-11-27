@@ -1,5 +1,5 @@
 {
-  "id": "615fc331-0e77-480e-ab44-a98d219d0184",
+  "id": "77be2875-ac98-4dc8-9c68-08bb1450d1af",
   "revision": 0,
   "last_node_id": 30,
   "last_link_id": 16,
@@ -653,6 +653,15 @@
           "link": null
         },
         {
+          "localized_name": "cache_mode",
+          "name": "cache_mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "cache_mode"
+          },
+          "link": null
+        },
+        {
           "localized_name": "assets",
           "name": "assets",
           "type": "DIRECTOR_ASSETS",
@@ -718,7 +727,8 @@
         "inherit",
         "inherit",
         "start",
-        0
+        0,
+        "auto"
       ]
     },
     {
@@ -828,6 +838,15 @@
           "link": null
         },
         {
+          "localized_name": "cache_mode",
+          "name": "cache_mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "cache_mode"
+          },
+          "link": null
+        },
+        {
           "localized_name": "assets",
           "name": "assets",
           "type": "DIRECTOR_ASSETS",
@@ -892,7 +911,8 @@
         "inherit",
         "inherit",
         "latent_tail",
-        0
+        0,
+        "auto"
       ]
     },
     {
@@ -1285,7 +1305,7 @@
       10,
       0,
       11,
-      14,
+      15,
       "DIRECTOR_SEGMENT"
     ],
     [

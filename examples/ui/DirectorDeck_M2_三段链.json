@@ -1,5 +1,5 @@
 {
-  "id": "fa6cd22f-9b6f-4016-b426-b04840393d0c",
+  "id": "a0632c7c-ee50-4222-90d9-dc12817d4d67",
   "revision": 0,
   "last_node_id": 30,
   "last_link_id": 25,
@@ -719,6 +719,15 @@
           "link": null
         },
         {
+          "localized_name": "cache_mode",
+          "name": "cache_mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "cache_mode"
+          },
+          "link": null
+        },
+        {
           "localized_name": "assets",
           "name": "assets",
           "type": "DIRECTOR_ASSETS",
@@ -784,7 +793,8 @@
         "inherit",
         "inherit",
         "start",
-        0
+        0,
+        "auto"
       ]
     },
     {
@@ -894,6 +904,15 @@
           "link": null
         },
         {
+          "localized_name": "cache_mode",
+          "name": "cache_mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "cache_mode"
+          },
+          "link": null
+        },
+        {
           "localized_name": "assets",
           "name": "assets",
           "type": "DIRECTOR_ASSETS",
@@ -959,7 +978,8 @@
         "inherit",
         "inherit",
         "guide_tail",
-        0
+        0,
+        "auto"
       ]
     },
     {
@@ -1069,6 +1089,15 @@
           "link": null
         },
         {
+          "localized_name": "cache_mode",
+          "name": "cache_mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "cache_mode"
+          },
+          "link": null
+        },
+        {
           "localized_name": "assets",
           "name": "assets",
           "type": "DIRECTOR_ASSETS",
@@ -1133,7 +1162,8 @@
         "inherit",
         "inherit",
         "guide_tail",
-        0
+        0,
+        "auto"
       ]
     },
     {
@@ -1542,7 +1572,7 @@
       10,
       0,
       11,
-      14,
+      15,
       "DIRECTOR_SEGMENT"
     ],
     [
@@ -1574,7 +1604,7 @@
       11,
       0,
       12,
-      14,
+      15,
       "DIRECTOR_SEGMENT"
     ],
     [

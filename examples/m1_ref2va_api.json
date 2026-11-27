@@ -105,6 +105,7 @@
       "cast_policy": "inherit",
       "continuity": "start",
       "seed": 0,
+      "cache_mode": "auto",
       "assets": [
         "9",
         0

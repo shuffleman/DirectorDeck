@@ -290,20 +290,38 @@ timeline_start[i]      = sum(delivery[0..i-1]) / 24
 
 ---
 
-## 8. 缓存/抽卡指纹
+## 8. 缓存/抽卡指纹与画面级复用（0.2.2）
+
+### 8.1 指纹（`core/cache.py`）
 
 ```
-segment_fingerprint = sha1(canonical_json({
-  resolved_hash,            # §4.8
-  prompt, seconds,
-  bundle_id, chain_key,
-  mode, seed,
-  guide_tail_hash           # 上一段尾帧/尾 latent 的哈希（guide_tail 时）
+segment_fingerprint = "sha1:" + sha1(canonical_json({
+  cache_schema,             # 缓存格式版本，升级自动失效
+  resolved_hash,            # §4.8（含 bundle/config/assets/brief/cast/continuity）
+  prompt, mode,             # 最终提示词 / t2va|ref2va
+  width, height, length,    # 画布与采样帧数
+  seed,                     # 解析后的种子（seed=0 时节点内先随机定下来）
+  sampler, scheduler, steps, denoise, sigmas, interpolate,
+  continuity, guide_prev,   # 引导模式与上一段 store_key
+  lock                      # 锁音签名（applied/roles/window）
 }))
 ```
 
-- 只用 **resolved** 数据，不用节点控件原始值。
-- 重抽段 N：N+1 的指纹因 `guide_tail_hash` 变化自动失效，UI 标"需重跑"。
+### 8.2 磁盘缓存（`adapters/segment_cache.py`）
+
+- 目录：`output/DirectorDeck/cache/segments/seg_<32hex>.{mp4,npz,json}`
+- `mp4`：画面（h264 CRF 12 / yuv420p，约 1–3MB/段；有轻微重编码误差，见 CHANGELOG）
+- `npz`：音轨 float、latent 尾部（latent_tail 续写用）、锁音源轨（audio_from_source 用）
+- `json`：段结果元数据 + 画面尺寸（读回解码用）
+- `SegmentCache.mode`（生成器控件）：`auto`=命中复用、未命中生成并写；`off`=不读不写；`reroll`=无视命中、重新生成并覆盖。
+- 命中时跳过：条件构造、采样、VAE 解码；下游的续写/锁音/无损混流仍可用（运行期仓库会从缓存补齐）。
+- 载入失败/损坏/版本不符一律按“未命中”处理，不影响正常出片；写盘失败也不影响出片（错误码 `DD-E040` 仅用于显式 I/O 失败）。
+
+### 8.3 失效规则
+
+- 段 N 的输入/resolved/种子/引导来源任一变化 → 指纹变 → 自动重新生成。
+- `cache_schema` +1 → 所有旧缓存失效。
+- 重抽段 N：N+1 的 `guide_prev`（=段 N 的 store_key）变化 → 自动跟着重跑。
 
 ---
 
@@ -319,7 +337,7 @@ segment_fingerprint = sha1(canonical_json({
 | 6 | `DirectorDeck_VoiceLock` | CAST + STRING | roles（多行“角色: 槽号, 起始秒”）、lock_audio、audio_1..3（可选 AUDIO） |
 | 7 | `DirectorDeck_FramePlanner` | PLAN + STRING | script、config、keep_full（可选） |
 | 8 | `DirectorDeck_ContinuityGuide` | CONDITIONING/IMAGE | **已并入 DirectorTake**：`continuity=guide_tail` 走 RGB 尾帧+尾音 AddGuide；`continuity=latent_tail` 直接搬上一段 latent 尾部 token（0.2.1），都不需要独立节点 |
-| 9 | `DirectorDeck_DirectorTake` | SEGMENT + IMAGE + AUDIO | bundle_policy、bundle、config_policy、assets_policy、assets、brief_policy、brief、cast_policy、continuity、segment_index、seed + optional: previous_segment |
+| 9 | `DirectorDeck_DirectorTake` | SEGMENT + IMAGE + AUDIO | bundle、config、script、continuity、segment_index、seed、cache_mode(auto/off/reroll) + optional: previous_segment、assets、brief、cast |
 | 10 | `DirectorDeck_SeamFixer` | IMAGE + STRING | prev_images、cur_images、cur_head + optional: enabled、window、max_add、gain_limit |
 | 11 | `DirectorDeck_SegmentCache` | SEGMENT + STRING | segment、mode(status/store/clear)、scope（可选） |
 | 12 | `DirectorDeck_Refiner` | SEGMENT + IMAGE + AUDIO | bundle、segment、images、audio + optional: mode(latent_2nd/lanczos2x)、denoise、steps、sampler_name、scheduler、upscale |

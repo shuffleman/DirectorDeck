@@ -79,7 +79,8 @@
       "brief_policy": "inherit",
       "cast_policy": "inherit",
       "continuity": "start",
-      "seed": 0
+      "seed": 0,
+      "cache_mode": "auto"
     }
   },
   "11": {
@@ -105,6 +106,7 @@
       "cast_policy": "inherit",
       "continuity": "latent_tail",
       "seed": 0,
+      "cache_mode": "auto",
       "previous_segment": [
         "10",
         0

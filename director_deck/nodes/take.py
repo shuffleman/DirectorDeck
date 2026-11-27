@@ -14,6 +14,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import random
 import time
 
 import numpy as np
@@ -21,10 +22,11 @@ from PIL import Image
 
 import folder_paths
 
-from ..adapters import av_latent, h3
+from ..adapters import av_latent, h3, segment_cache
 from ..adapters import segment_store
 from ..core import assets as assets_lib
 from ..core import audio as audio_math
+from ..core import cache as cache_lib
 from ..core import frames, policy, seam
 from ..core.types import (
     ASSETS_POLICIES, BRIEF_POLICIES, BUNDLE_POLICIES, CAST_POLICIES, CATEGORY,
@@ -97,6 +99,10 @@ class DirectorDeckTake:
                 "continuity": (list(CONTINUITY_MODES), {"default": "unset"}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xFFFFFFFFFFFFFFFF,
                                  "tooltip": "0=按全局种子策略"}),
+                # 抽卡缓存：auto=命中就秒复用、没命中就生成并缓存；off=不读不写；
+                # reroll=无视缓存重新生成并覆盖。缓存的是画面 mp4 + 音轨/latent npz。
+                "cache_mode": (["auto", "off", "reroll"], {"default": "auto",
+                                                           "tooltip": "抽卡缓存：auto=命中秒复用 / off=关闭 / reroll=强制重抽"}),
             },
             "optional": {
                 "assets": (TYPE_ASSETS, {"tooltip": "段级资产管理器（覆盖/合并）"}),
@@ -127,6 +133,69 @@ class DirectorDeckTake:
                                        default=str).encode("utf-8")).hexdigest()
 
     # ------------------------------------------------------------------
+    @staticmethod
+    def _cache_root(config: dict) -> str:
+        """段缓存根目录（放在 output 下，和段元数据/清单同处）。"""
+        return os.path.join(folder_paths.get_output_directory(),
+                            config.get("output_dir", "DirectorDeck"), "cache")
+
+    @staticmethod
+    def _write_segment_meta(config: dict, segment_index: int, store_key: str,
+                            result: dict) -> None:
+        """把段元数据落盘（不含张量）；写失败不影响出图。"""
+        try:
+            root = os.path.join(folder_paths.get_output_directory(),
+                                config.get("output_dir", "DirectorDeck"), "segments")
+            os.makedirs(root, exist_ok=True)
+            path = os.path.join(root, f"seg_{int(segment_index):02d}_{store_key}.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump(result, fh, ensure_ascii=False, indent=2)
+            result["meta_path"] = path
+        except Exception as exc:
+            print(f"[DirectorDeck] 段元数据落盘失败：{exc}")
+
+    def _finish_from_cache(self, cached: dict, *, config: dict, resolved, segment_index: int,
+                           prompt: str, cache_key: str, started: float,
+                           width: int, height: int) -> dict:
+        """缓存命中：直接用磁盘上的画面/音轨/latent，跳过条件构造与采样。"""
+        images = cached["images"]
+        audio = cached["audio"]
+        latent_handoff = cached["latent_handoff"]
+        lock_source_audio = cached["lock_source_audio"]
+        result = dict((cached.get("meta") or {}).get("segment") or {})
+        result.update({
+            "schema": "DIRECTOR_SEGMENT@1",
+            "index": int(segment_index),
+            "chain_key": resolved.hash,
+            "resolved": resolved.to_dict(),
+            "prompt": prompt,
+            "width": int(width),
+            "height": int(height),
+            "frames": int(images.shape[0]),
+            "sample": int(images.shape[0]),
+            "store_key": cache_lib.cache_stem(cache_key),
+            "cache_key": cache_key,
+            "cache_hit": True,
+            "elapsed_s": round(time.perf_counter() - started, 2),
+        })
+        # 续写/合并都要从运行期仓库拿东西，缓存命中也要把仓库补齐。
+        segment_store.put(cache_lib.cache_stem(cache_key), {
+            "images_tail": images[-min(56, images.shape[0]):].clone(),
+            "seam_tail": images[-min(24, images.shape[0]):].clone(),
+            "audio_full": audio,
+            "latent_handoff": latent_handoff,
+            "lock_source_audio": lock_source_audio,
+            "config": resolved.config,
+            "assets": resolved.assets,
+            "cast": resolved.cast,
+            "brief": resolved.brief,
+        })
+        ui = self._preview_ui(images) if config.get("preview", True) else {}
+        self._write_segment_meta(config, segment_index, cache_lib.cache_stem(cache_key), result)
+        print(f"[DirectorDeck] 第 {segment_index} 段命中缓存：{result['frames']} 帧，"
+              f"{result['elapsed_s']}s（跳过采样，key={cache_key[:16]}…）")
+        return {"ui": ui, "result": (result, images, audio)}
+
     @staticmethod
     def _resolve_seed(config: dict, node_seed: int, segment_index: int) -> int:
         """按节点 seed / 全局种子策略算本段 seed；返回 0 表示交给采样器随机。"""
@@ -186,8 +255,8 @@ class DirectorDeckTake:
     # ------------------------------------------------------------------
     def generate(self, bundle, config, script, segment_index, bundle_policy,
                  config_policy, assets_policy, brief_policy, cast_policy,
-                 continuity, seed=0, assets=None, brief=None, cast=None,
-                 previous_segment=None):
+                 continuity, seed=0, cache_mode="auto", assets=None, brief=None,
+                 cast=None, previous_segment=None):
         started = time.perf_counter()
         index = int(segment_index) - 1  # 内部用 0 起，方便帧数学
 
@@ -248,9 +317,59 @@ class DirectorDeckTake:
         length = frames.validate_length(plan.sample)
         width, height = frames.validate_canvas(config["width"], config["height"])
 
-        # 5) 条件 + 空 latent。
+        # 4.5) 抽卡缓存：先算指纹。命中就直接读回画面/音轨/latent，完全跳过采样。
+        final_seed = self._resolve_seed(config, seed, int(segment_index))
+        if int(final_seed) <= 0:
+            # 之前 seed=0 是采样器内部随机；那样缓存永远命中不了，所以这里提前定下来。
+            final_seed = random.randint(0, 0xFFFFFFFFFFFFFFFF)
         ref_images = assets_lib.image_tensors(resolved.assets)
         mode = "ref2va" if ref_images else "t2va"
+
+        lock_sig = {"applied": False}
+        if resolved.cast.get("lock_audio"):
+            roles_with_audio = [r for r in resolved.cast.get("roles") or []
+                                if r.get("audio_data")]
+            if roles_with_audio:
+                seg_start, seg_end = audio_math.segment_span(
+                    plan.timeline_start, plan.head, plan.sample)
+                lock_sig = {"applied": True,
+                            "roles": [r.get("name") for r in roles_with_audio],
+                            "window": [round(seg_start, 3), round(seg_end, 3)]}
+        guide_prev = None
+        if resolved.continuity in ("guide_tail", "latent_tail") and previous_segment is not None:
+            guide_prev = previous_segment.get("store_key")
+
+        cache_payload = {
+            "resolved_hash": resolved.hash,
+            "prompt": prompt,
+            "mode": mode,
+            "width": int(width),
+            "height": int(height),
+            "length": int(length),
+            "seed": int(final_seed),
+            "sampler": config.get("sampler_name"),
+            "scheduler": config.get("scheduler"),
+            "steps": int(config.get("steps", 10)),
+            "denoise": float(config.get("denoise", 1.0)),
+            "sigmas": config.get("sigmas_string"),
+            "interpolate": int(config.get("interpolate_to_steps", 0)),
+            "continuity": resolved.continuity,
+            "guide_prev": guide_prev,
+            "lock": lock_sig,
+        }
+        cache_key = cache_lib.segment_fingerprint(cache_payload)
+        cache_root = self._cache_root(config)
+
+        if cache_mode == "auto":
+            cached = segment_cache.load(cache_root, cache_key)
+            if cached is not None:
+                return self._finish_from_cache(
+                    cached, config=config, resolved=resolved,
+                    segment_index=int(segment_index), prompt=prompt,
+                    cache_key=cache_key, started=started,
+                    width=width, height=height)
+
+        # 5) 条件 + 空 latent。
         cond, latent = h3.build_conditioning(
             bundle, mode=mode, prompt=prompt, width=width, height=height,
             length=length, ref_images=ref_images)
@@ -325,8 +444,7 @@ class DirectorDeckTake:
                           "head": head_frames,
                           "audio": not lock_info.get("applied")}
 
-        # 7) 采样 + 解码。
-        final_seed = self._resolve_seed(config, seed, int(segment_index))
+        # 7) 采样 + 解码（final_seed 已在算缓存指纹时确定）。
         sampled = h3.sample(
             bundle, cond, latent, seed=final_seed,
             sampler_name=config.get("sampler_name", "er_sde"),
@@ -363,11 +481,16 @@ class DirectorDeckTake:
                     images = fixed
 
         # 9) 把本段的运行期数据放进仓库：下一段靠它拿尾帧/尾音/latent 尾。
-        store_key = hashlib.sha1(
-            f"{resolved.hash}|{prompt}|{actual_seed}|{tuple(images.shape)}"
-            .encode("utf-8")).hexdigest()[:24]
+        # store_key 用缓存指纹的安全 stem：这样“命中缓存”和“刚生成”两条路对下游完全一致，
+        # 同时文件名里不会出现 sha1: 里的冒号（Windows 不允许）。
+        store_key = cache_lib.cache_stem(cache_key)
         # latent 尾帧续写要用的数据：采样后的整条 latent（很小，几 MB）留一份。
         video_latent, audio_latent = av_latent.split_av(sampled)
+        latent_handoff = {
+            "video": video_latent.detach().float().cpu(),
+            "audio": audio_latent.detach().float().cpu(),
+            "sample": int(images.shape[0]),
+        }
         segment_store.put(store_key, {
             # 尾帧最多留 56 帧（衔接头上限），下一段按自己的 head 取用。
             "images_tail": images[-min(56, images.shape[0]):].clone(),
@@ -375,11 +498,7 @@ class DirectorDeckTake:
             "seam_tail": images[-min(24, images.shape[0]):].clone(),
             "audio_full": audio,
             # latent 尾帧续写：下一段会直接搬这里的尾部 token。
-            "latent_handoff": {
-                "video": video_latent.detach().float().cpu(),
-                "audio": audio_latent.detach().float().cpu(),
-                "sample": int(images.shape[0]),
-            },
+            "latent_handoff": latent_handoff,
             # 锁音时的源音轨（成片可直接混流，做到逐样点无损）。
             "lock_source_audio": lock_source_audio,
             "config": resolved.config,
@@ -407,24 +526,27 @@ class DirectorDeckTake:
             "elapsed_s": round(elapsed, 2),
             "preview": bool(config.get("preview", True)),
             "store_key": store_key,
+            "cache_key": cache_key,
+            "cache_hit": False,
             "guide": guide_info,
             "handoff": handoff_info,
             "lock": lock_info,
             "seam": seam_info,
         }
+
+        # 9.5) 写抽卡缓存（auto/reroll 才写；off 表示完全不碰磁盘缓存）。
+        if cache_mode in ("auto", "reroll"):
+            try:
+                segment_cache.save(
+                    cache_root, cache_key, images=images, audio=audio,
+                    latent_handoff=latent_handoff,
+                    lock_source_audio=lock_source_audio,
+                    meta={"segment": result})
+            except Exception as exc:  # 缓存写失败不影响本次出片
+                print(f"[DirectorDeck] 缓存写入失败（继续出片）：{exc}")
+
         ui = self._preview_ui(images) if config.get("preview", True) else {}
-        # 把段元数据落盘一份（不含张量），方便抽卡/排错/回放；写失败不影响出图。
-        try:
-            output_root = os.path.join(folder_paths.get_output_directory(),
-                                       config.get("output_dir", "DirectorDeck"),
-                                       "segments")
-            os.makedirs(output_root, exist_ok=True)
-            meta_path = os.path.join(output_root, f"seg_{int(segment_index):02d}_{store_key}.json")
-            with open(meta_path, "w", encoding="utf-8") as fh:
-                json.dump(result, fh, ensure_ascii=False, indent=2)
-            result["meta_path"] = meta_path
-        except Exception as exc:  # 元数据写不进去不影响出片
-            print(f"[DirectorDeck] 段元数据落盘失败：{exc}")
+        self._write_segment_meta(config, int(segment_index), store_key, result)
 
         print(f"[DirectorDeck] 第 {segment_index} 段完成：{result['frames']} 帧，"
               f"{elapsed:.1f}s，seed={actual_seed}，guide={guide_info.get('mode', guide_info['used'])}，"

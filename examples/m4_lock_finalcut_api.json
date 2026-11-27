@@ -97,6 +97,7 @@
       "cast_policy": "replace",
       "continuity": "start",
       "seed": 0,
+      "cache_mode": "auto",
       "cast": [
         "6",
         0

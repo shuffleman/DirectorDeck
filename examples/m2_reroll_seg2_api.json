@@ -93,7 +93,8 @@
       "brief_policy": "inherit",
       "cast_policy": "inherit",
       "continuity": "start",
-      "seed": 0
+      "seed": 0,
+      "cache_mode": "auto"
     }
   },
   "11": {
@@ -119,6 +120,7 @@
       "cast_policy": "inherit",
       "continuity": "guide_tail",
       "seed": 88888,
+      "cache_mode": "auto",
       "previous_segment": [
         "10",
         0
@@ -148,6 +150,7 @@
       "cast_policy": "inherit",
       "continuity": "guide_tail",
       "seed": 0,
+      "cache_mode": "auto",
       "previous_segment": [
         "11",
         0

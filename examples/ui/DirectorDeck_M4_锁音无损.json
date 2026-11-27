@@ -1,5 +1,5 @@
 {
-  "id": "f4a9aee8-f45e-40ea-8d15-3146c7d8d4c5",
+  "id": "f8184903-54fc-4545-9c78-fe8bf148e399",
   "revision": 0,
   "last_node_id": 50,
   "last_link_id": 12,
@@ -770,6 +770,15 @@
           "link": null
         },
         {
+          "localized_name": "cache_mode",
+          "name": "cache_mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "cache_mode"
+          },
+          "link": null
+        },
+        {
           "localized_name": "assets",
           "name": "assets",
           "type": "DIRECTOR_ASSETS",
@@ -834,7 +843,8 @@
         "inherit",
         "replace",
         "start",
-        0
+        0,
+        "auto"
       ]
     },
     {
@@ -1260,7 +1270,7 @@
       6,
       0,
       10,
-      13,
+      14,
       "DIRECTOR_CAST"
     ],
     [

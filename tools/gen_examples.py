@@ -100,8 +100,7 @@ def take_node(node_id: str, bundle: str, config: str, script: str,
         "assets_policy": "replace" if assets else "clear",
         "brief_policy": "inherit",
         "cast_policy": "inherit",
-        "continuity": "start",
-        "seed": 0,
+        "continuity": "start", "seed": 0, "cache_mode": "auto",
     }
     if assets:
         inputs["assets"] = [assets, 0]
@@ -195,6 +194,7 @@ def m2_chain() -> dict:
             "cast_policy": "inherit",
             "continuity": item["continuity"],
             "seed": 0,
+            "cache_mode": "auto",
         }
         if item["index"] > 1:
             # 第 2 段接第 1 段（节点 10），第 3 段接第 2 段（节点 11）。
@@ -251,7 +251,7 @@ def m3_digital_human() -> dict:
                    "segment_index": 1, "bundle_policy": "provided",
                    "config_policy": "inherit", "assets_policy": "clear",
                    "brief_policy": "inherit", "cast_policy": "replace",
-                   "continuity": "start", "seed": 0, "cast": ["6", 0]}},
+                   "continuity": "start", "seed": 0, "cache_mode": "auto", "cast": ["6", 0]}},
         # 一采原片
         "21": {"class_type": "CreateVideo",
                "inputs": {"images": ["10", 1], "fps": 24.0, "audio": ["10", 2],
@@ -296,7 +296,7 @@ def m4_lock_finalcut() -> dict:
                    "segment_index": 1, "bundle_policy": "provided",
                    "config_policy": "inherit", "assets_policy": "clear",
                    "brief_policy": "inherit", "cast_policy": "replace",
-                   "continuity": "start", "seed": 0, "cast": ["6", 0]}},
+                   "continuity": "start", "seed": 0, "cache_mode": "auto", "cast": ["6", 0]}},
         "40": {"class_type": "DirectorDeck_FinalCut",
                "inputs": {"segment_1": ["10", 0], "images_1": ["10", 1],
                           "audio_1": ["10", 2], "save_manifest": True,
@@ -333,7 +333,7 @@ def m5_latent_chain() -> dict:
                 "segment_index": 2, "bundle_policy": "inherit",
                 "config_policy": "inherit", "assets_policy": "inherit",
                 "brief_policy": "inherit", "cast_policy": "inherit",
-                "continuity": "latent_tail", "seed": 0,
+                "continuity": "latent_tail", "seed": 0, "cache_mode": "auto",
                 "previous_segment": ["10", 0],
             },
         },
