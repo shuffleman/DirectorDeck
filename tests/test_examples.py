@@ -150,6 +150,23 @@ class ExampleTest(unittest.TestCase):
         self.assertIn("女主 @0.0", booth["inputs"]["lines"])
         self.assertIn("男主 @1.2", booth["inputs"]["lines"])
         self.assertEqual(booth["inputs"]["mix_mode"], "priority")
+        self.assertTrue(booth["inputs"]["auto_split"])
+
+    def test_m10_tts_auto(self):
+        graph = load("m10_tts_auto_api.json")
+        self._check(graph)
+        booth = next(n for n in graph.values()
+                     if n["class_type"] == "DirectorDeck_TTSBooth")
+        # 自动排期示例：台词表里不写起始秒，靠 auto_start/auto_split 排列。
+        self.assertNotIn("@0.0", booth["inputs"]["lines"])
+        self.assertNotIn("@1.2", booth["inputs"]["lines"])
+        self.assertTrue(booth["inputs"]["auto_start"])
+        self.assertTrue(booth["inputs"]["auto_split"])
+        self.assertEqual(int(booth["inputs"]["pause_ms"]), 250)
+        take = next(n for n in graph.values()
+                    if n["class_type"] == "DirectorDeck_DirectorTake")
+        self.assertEqual(take["inputs"]["cast_policy"], "replace")
+        self.assertIn("cast", take["inputs"])
         take = next(n for n in graph.values()
                     if n["class_type"] == "DirectorDeck_DirectorTake")
         self.assertEqual(take["inputs"]["cast_policy"], "replace")

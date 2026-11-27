@@ -580,9 +580,11 @@ def make_m9_booth(oi):
                      "device": "auto", "attention": "auto",
                      "decode_mode": "eager", "download_if_missing": False},
              title="Breeze TTS 2（int8 hybrid）"),
-        dict(id=5, type="DirectorDeck_TTSBooth", pos=[420, 0], size=[440, 760],
+        dict(id=5, type="DirectorDeck_TTSBooth", pos=[420, 0], size=[440, 820],
              values={"lines": "女主 @0.0 | 一位年轻女性，声音清澈温柔，语速偏慢，情绪平静。 | 你好，我是这部剧的女主角。\n"
                              "男主 @1.2 | 一位年轻男性，声音低沉沉稳，语气干练。 | 收到，我去检查船桨，五分钟以后开拍。",
+                     "auto_start": True, "auto_split": True,
+                     "pause_ms": 300, "chars_per_second": 4.5,
                      "mix_mode": "priority", "duck_db": -8.0,
                      "attack_ms": 60, "release_ms": 200,
                      "cfg_scale": 4.0, "max_new_tokens": 1500,
@@ -591,7 +593,7 @@ def make_m9_booth(oi):
                      "depth_top_k": 50, "depth_top_p": 1.0,
                      "seed": 20261128},
              links_in={"breeze_model": (4, 0)},
-             title="TTS 台词表（一行一条：角色 @起始秒 | 音色描述 | 台词）"),
+             title="TTS 台词表（一行一条：角色 [@起始秒] | 音色描述 | 台词）"),
         dict(id=10, type="DirectorDeck_DirectorTake", pos=[920, 0], size=[380, 520],
              values={"segment_index": 1, "bundle_policy": "provided",
                      "config_policy": "inherit", "assets_policy": "clear",
@@ -636,6 +638,75 @@ def make_m9_booth(oi):
          "color": "#b58b2a", "font_size": 22, "flags": {}},
     ]
     return build_ui(oi, nodes, groups, "DirectorDeck_M9_台词表配音")
+
+
+def make_m10_auto(oi):
+    """M10：台词表自动排期（不写起始秒，按句估时长/分段）。"""
+    nodes = [
+        loader_node(), config_node(), script_node(),
+        dict(id=4, type="BreezeTTS2LoadModel", pos=[-20, 1120], size=[400, 260],
+             values={"model": "int8 hybrid (recommended)", "dtype": "auto",
+                     "device": "auto", "attention": "auto",
+                     "decode_mode": "eager", "download_if_missing": False},
+             title="Breeze TTS 2（int8 hybrid）"),
+        dict(id=5, type="DirectorDeck_TTSBooth", pos=[420, 0], size=[440, 820],
+             values={"lines": "女主 | 一位年轻女性，声音清澈温柔，语速偏慢，情绪平静。 | 你好。我是女主角。\n"
+                             "男主 | 一位年轻男性，声音低沉沉稳，语气干练。 | 收到，我去检查船桨。",
+                     "auto_start": True, "auto_split": True,
+                     "pause_ms": 250, "chars_per_second": 4.5,
+                     "mix_mode": "priority", "duck_db": -8.0,
+                     "attack_ms": 60, "release_ms": 200,
+                     "cfg_scale": 4.0, "max_new_tokens": 1500,
+                     "temperature": 0.9, "top_k": 50, "top_p": 1.0,
+                     "repetition_penalty": 1.1, "depth_temperature": 0.9,
+                     "depth_top_k": 50, "depth_top_p": 1.0,
+                     "seed": 20261129},
+             links_in={"breeze_model": (4, 0)},
+             title="台词表（不写 @秒：按句自动分段 + 自动排期）"),
+        dict(id=10, type="DirectorDeck_DirectorTake", pos=[920, 0], size=[380, 520],
+             values={"segment_index": 1, "bundle_policy": "provided",
+                     "config_policy": "inherit", "assets_policy": "clear",
+                     "brief_policy": "inherit", "cast_policy": "replace",
+                     "continuity": "start", "seed": 0, "cache_mode": "auto"},
+             links_in={"bundle": (1, 0), "config": (2, 0), "script": (3, 0),
+                       "cast": (5, 0)}),
+        dict(id=40, type="DirectorDeck_FinalCut", pos=[1340, 0], size=[420, 460],
+             values={"save_manifest": True, "audio_from_source": True,
+                     "audio_crossfade_ms": 0},
+             links_in={"segment_1": (10, 0), "images_1": (10, 1), "audio_1": (10, 2)}),
+        dict(id=41, type="CreateVideo", pos=[1780, 0], size=[320, 200],
+             values={"fps": 24.0, "bit_depth": 8, "color_space": "sRGB",
+                     "chroma_subsampling": "auto", "codec": "h264"},
+             links_in={"images": (40, 0), "audio": (40, 1)}),
+        dict(id=42, type="SaveVideo", pos=[1780, 240], size=[360, 200],
+             values={"filename_prefix": "DirectorDeck/M10_auto",
+                     "format": "auto", "format.codec": "auto", "codec": "auto"},
+             links_in={"video": (41, 0)}),
+        dict(id=43, type="SaveAudio", pos=[1780, 480], size=[360, 110],
+             values={"filename_prefix": "DirectorDeck/M10_auto_mix"},
+             links_in={"audio": (40, 1)}),
+        dict(id=44, type="SaveAudio", pos=[1780, 620], size=[360, 110],
+             values={"filename_prefix": "DirectorDeck/M10_auto_a"},
+             links_in={"audio": (5, 1)}),
+        dict(id=45, type="SaveAudio", pos=[1780, 760], size=[360, 110],
+             values={"filename_prefix": "DirectorDeck/M10_auto_b"},
+             links_in={"audio": (5, 2)}),
+        dict(id=50, type="Note", pos=[920, 560], size=[680, 260],
+             text="【M10 台词自动排期】\n"
+                  "台词表不写 @起始秒，节点会：按句号/问号/感叹号自动分段（auto_split），\n"
+                  "生成后以真实音频长度按“上一句结束 + pause_ms”自动往后排（auto_start）。\n"
+                  "写 @秒 的句子仍按写死的来，后面的自动句子接着它继续排。\n"
+                  "节点还会输出 total_seconds，可用来回填全局配置的段时长。"),
+    ]
+    groups = [
+        {"title": "模型 / 配置 / 剧本", "bounding": [-60, -20, 460, 1420],
+         "color": "#3f789e", "font_size": 22, "flags": {}},
+        {"title": "台词表（自动分段 + 自动排期）", "bounding": [400, -20, 480, 960],
+         "color": "#8A8", "font_size": 22, "flags": {}},
+        {"title": "锁音 / 生成 / 输出", "bounding": [900, -20, 1300, 900],
+         "color": "#b58b2a", "font_size": 22, "flags": {}},
+    ]
+    return build_ui(oi, nodes, groups, "DirectorDeck_M10_台词自动排期")
 
 
 def make_m1(oi):
@@ -895,6 +966,7 @@ WORKFLOWS = [
     ("m6_mix_rules_api", make_m6_mix),
     ("m8_tts_lock_api", make_m8_tts),
     ("m9_tts_booth_api", make_m9_booth),
+    ("m10_tts_auto_api", make_m10_auto),
 ]
 
 

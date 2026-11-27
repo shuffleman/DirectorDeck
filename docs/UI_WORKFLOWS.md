@@ -14,6 +14,7 @@
 | `DirectorDeck_M6_多角色混音.json` | 多角色锁音 + 自动 ducking | 两个以上角色同时说话 |
 | `DirectorDeck_M8_TTS锁音.json` | 本地 Breeze-TTS-2 两路发声 → 锁音 | 想用本地 TTS 当配音 |
 | `DirectorDeck_M9_台词表配音.json` | 台词表一键多角色配音 → 锁音 | 台词都是文本、想少摆节点 |
+| `DirectorDeck_M10_台词自动排期.json` | 不写起始秒，按句自动分段/自动排期 | 懒得算每句起点、想先跑起来 |
 
 ## 打开后先改什么
 
@@ -56,8 +57,13 @@
 ```
 
 - 每行 `角色 @起始秒 | 音色描述 | 台词`；同一角色可写多行；
+- **起始秒可省略**（或写 `@auto`）：`auto_start` 打开时按“上一句结束 + `pause_ms`”自动排；
+  写了 `@秒` 的句子仍按写死的来，后面的自动句接着它继续；
+- **`auto_split`**：一句里有多个句号/问号/感叹号时自动拆成多句分别生成、分别排期；
+- `chars_per_second` 只用于生成前预估（摘要里对比预估/实际总长）；
 - 角色第一次出现的顺序 = ducking 优先级；`seed` 固定可复现；
-- 输出 `cast` 直接接视频生成器（`cast_policy=replace`），`audio_1..3` 可接 SaveAudio 试听。
+- 输出 `cast` 直接接视频生成器（`cast_policy=replace`），`audio_1..3` 可接 SaveAudio 试听，
+  `total_seconds` 可回填全局配置的段时长。
 
 ## 多角色锁音的角色行格式
 

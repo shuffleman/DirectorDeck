@@ -53,6 +53,7 @@ ComfyUI 节点库：**AI 短剧导演台**。把「模型 + 素材 + 剧本 + �
 | `DirectorDeck_M6_多角色混音.json` | 多角色锁音 + 自动 ducking |
 | `DirectorDeck_M8_TTS锁音.json` | 两个 Breeze VoiceDesign → 锁音 → H3 |
 | `DirectorDeck_M9_台词表配音.json` | 台词表一键多角色配音 → 锁音 |
+| `DirectorDeck_M10_台词自动排期.json` | 不写起始秒：按句自动分段 + 自动排期 → 锁音 |
 
 ## 使用说明
 
@@ -88,9 +89,13 @@ ComfyUI 节点库：**AI 短剧导演台**。把「模型 + 素材 + 剧本 + �
   1. 逐角色 TTS → `VoiceLock` 的 `audio_1..3`（保留 ducking/时间轴控制）；
   2. 整段对话用 `BreezeTTS2MultiSpeaker` 生成一路 → `VoiceLock` 单角色（`sum`）。
 - TTS 输出 24kHz 单声道，锁音器会自动重采样到音频 VAE 的 32kHz。
-- **台词表一键版**：`DirectorDeck_TTSBooth`，每行 `角色 @起始秒 | 音色描述 | 台词`，
-  自动逐条生成并按角色拼轨，输出可锁音 CAST + 3 路可试听音频；固定 `seed` 可复现/命中缓存。
-- 画布示例：`DirectorDeck_M8_TTS锁音.json`、`DirectorDeck_M9_台词表配音.json`。
+- **台词表一键版**：`DirectorDeck_TTSBooth`，每行 `角色 [@起始秒] | 音色描述 | 台词`：
+  - 起始秒可以省略（或写 `@auto`），由节点按“上一句结束 + `pause_ms`”自动往后排；
+  - `auto_split` 打开时，一句里多个句号/问号/感叹号会自动拆成多句分别生成、分别排期；
+  - `chars_per_second` 只用于生成前预估语速，摘要里给出「预估总长 vs 实际总长」；
+  - 输出可锁音 CAST + 3 路可试听音频 + `total_seconds`（可直接回填段时长）；固定 `seed` 可复现/命中缓存。
+- 画布示例：`DirectorDeck_M8_TTS锁音.json`、`DirectorDeck_M9_台词表配音.json`、
+  `DirectorDeck_M10_台词自动排期.json`。
 
 ### 5. 导演台面板
 

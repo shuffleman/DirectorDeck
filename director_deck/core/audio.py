@@ -11,6 +11,8 @@
 
 from __future__ import annotations
 
+import re
+
 
 def samples_for(seconds: float, sample_rate: int) -> int:
     """秒 -> 采样点数（四舍五入到最近的整数点）。"""
@@ -203,3 +205,54 @@ def apply_limiter(peak: float, *, ceiling: float = 0.99) -> float:
     if peak <= float(ceiling) or peak <= 0:
         return 1.0
     return float(ceiling) / peak
+
+
+# ---------------------------------------------------------------- 台词自动排期
+# 台词表可以只写“角色 + 音色描述 + 台词”，不给起始秒；节点会按“上一句结束 + 停顿”
+# 自动往后排。生成前先按字数估个时长（给摘要/分段用），生成后以真实音频长度为准重排。
+
+SPEECH_CPS_DEFAULT = 4.5  # 中文语速：每秒约 4.5 个字（仅用于生成前预估）
+PAUSE_MS_DEFAULT = 300     # 两句之间的默认停顿
+
+
+def estimate_speech_seconds(text: str, chars_per_second: float = SPEECH_CPS_DEFAULT,
+                            min_seconds: float = 0.6) -> float:
+    """按字数估一条台词的时长（生成前预估；实际以 TTS 输出为准）。
+
+    中文按“字”算，英文/数字按“词 × 2 字”折算，再除以语速。
+    这个数只用于摘要和“先看看总时长够不够一段”，不参与最终排期。
+    """
+    text = (text or "").strip()
+    if not text:
+        return 0.0
+    cjk = sum(1 for ch in text if "\u4e00" <= ch <= "\u9fff")
+    words = re.findall(r"[A-Za-z0-9']+", text)
+    units = cjk + 2 * len(words)
+    cps = max(0.1, float(chars_per_second))
+    return max(float(min_seconds), units / cps)
+
+
+def split_sentences(text: str) -> list[str]:
+    """把一段台词按句号/问号/感叹号/分号/省略号切成多句（保留标点）。"""
+    parts = re.split(r"(?<=[。！？!?；;…])", (text or "").strip())
+    return [part.strip() for part in parts if part and part.strip()]
+
+
+def schedule_starts(durations: list[float], explicit_starts: list[float | None],
+                    pause_seconds: float = PAUSE_MS_DEFAULT / 1000.0) -> list[float]:
+    """按“上一句结束 + 停顿”自动排起始秒；显式给了起始秒的句优先用它。
+
+    - `durations`：每句真实时长（秒）；
+    - `explicit_starts`：每句显式起始秒（None = 自动排）；
+    - 返回：每句相对时间轴 0 的起始秒。
+    """
+    cursor = 0.0
+    starts: list[float] = []
+    for duration, explicit in zip(durations, explicit_starts):
+        if explicit is None:
+            start = cursor
+        else:
+            start = max(0.0, float(explicit))
+        starts.append(round(start, 3))
+        cursor = max(cursor, start + max(0.0, float(duration)) + max(0.0, float(pause_seconds)))
+    return starts

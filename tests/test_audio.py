@@ -137,5 +137,36 @@ class MixGainsTest(unittest.TestCase):
         self.assertGreater(reversed_mix[-1], 0.9)
 
 
+class ScheduleTest(unittest.TestCase):
+    def test_split_sentences(self):
+        parts = audio.split_sentences("你好。我是女主角！真的吗？最后一句")
+        self.assertEqual(parts, ["你好。", "我是女主角！", "真的吗？", "最后一句"])
+        self.assertEqual(audio.split_sentences(""), [])
+        self.assertEqual(audio.split_sentences("没有标点"), ["没有标点"])
+
+    def test_estimate_speech_seconds(self):
+        self.assertEqual(audio.estimate_speech_seconds(""), 0.0)
+        # 4 个中文 / 4.5 字每秒 ≈ 0.889s
+        self.assertAlmostEqual(audio.estimate_speech_seconds("你好世界"), 4 / 4.5, places=3)
+        # 英文两个词 = 4 个折算字，同一起跑线
+        self.assertAlmostEqual(audio.estimate_speech_seconds("hello world"), 4 / 4.5, places=3)
+        # 太短的话有下限
+        self.assertAlmostEqual(audio.estimate_speech_seconds("嗨"), 0.6, places=3)
+
+    def test_schedule_starts_auto(self):
+        starts = audio.schedule_starts([2.0, 2.0], [None, None], pause_seconds=0.3)
+        self.assertEqual(starts, [0.0, 2.3])
+
+    def test_schedule_starts_mixed_explicit(self):
+        starts = audio.schedule_starts([2.0, 2.0], [None, 5.0], pause_seconds=0.3)
+        self.assertEqual(starts, [0.0, 5.0])
+        starts = audio.schedule_starts([2.0, 2.0], [1.0, None], pause_seconds=0.3)
+        self.assertEqual(starts, [1.0, 3.3])
+
+    def test_schedule_starts_clamps_negative(self):
+        self.assertEqual(audio.schedule_starts([1.0], [-3.0]), [0.0])
+        self.assertEqual(audio.schedule_starts([], []), [])
+
+
 if __name__ == "__main__":
     unittest.main()

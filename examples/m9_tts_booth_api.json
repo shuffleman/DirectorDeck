@@ -76,6 +76,10 @@
         0
       ],
       "lines": "女主 @0.0 | 一位年轻女性，声音清澈温柔，语速偏慢，情绪平静。 | 你好，我是这部剧的女主角。\n男主 @1.2 | 一位年轻男性，声音低沉沉稳，语气干练。 | 收到，我去检查船桨，五分钟以后开拍。",
+      "auto_start": true,
+      "auto_split": true,
+      "pause_ms": 300,
+      "chars_per_second": 4.5,
       "mix_mode": "priority",
       "duck_db": -8.0,
       "attack_ms": 60,

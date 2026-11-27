@@ -25,6 +25,7 @@ EXPECTED = {
     "DirectorDeck_M6_多角色混音.json": {"DirectorDeck_VoiceLock", "DirectorDeck_FinalCut"},
     "DirectorDeck_M8_TTS锁音.json": {"BreezeTTS2VoiceDesign", "DirectorDeck_VoiceLock"},
     "DirectorDeck_M9_台词表配音.json": {"DirectorDeck_TTSBooth", "DirectorDeck_FinalCut"},
+    "DirectorDeck_M10_台词自动排期.json": {"DirectorDeck_TTSBooth", "DirectorDeck_DirectorTake"},
 }
 
 

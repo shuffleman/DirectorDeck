@@ -1,5 +1,5 @@
 {
-  "id": "9e84640e-c73d-416a-8568-821ee014db85",
+  "id": "d9fd455f-51c1-4e39-8ebf-704d709a372b",
   "revision": 0,
   "last_node_id": 50,
   "last_link_id": 14,
@@ -646,12 +646,12 @@
       ],
       "size": [
         440,
-        760
+        820
       ],
       "flags": {},
       "order": 5,
       "mode": 0,
-      "title": "TTS 台词表（一行一条：角色 @起始秒 | 音色描述 | 台词）",
+      "title": "TTS 台词表（一行一条：角色 [@起始秒] | 音色描述 | 台词）",
       "inputs": [
         {
           "localized_name": "breeze_model",
@@ -665,6 +665,42 @@
           "type": "STRING",
           "widget": {
             "name": "lines"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "auto_start",
+          "name": "auto_start",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "auto_start"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "auto_split",
+          "name": "auto_split",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "auto_split"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "pause_ms",
+          "name": "pause_ms",
+          "type": "INT",
+          "widget": {
+            "name": "pause_ms"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "chars_per_second",
+          "name": "chars_per_second",
+          "type": "FLOAT",
+          "widget": {
+            "name": "chars_per_second"
           },
           "link": null
         },
@@ -836,6 +872,13 @@
           "type": "STRING",
           "slot_index": 4,
           "links": []
+        },
+        {
+          "localized_name": "total_seconds",
+          "name": "total_seconds",
+          "type": "FLOAT",
+          "slot_index": 5,
+          "links": []
         }
       ],
       "properties": {
@@ -843,6 +886,10 @@
       },
       "widgets_values": [
         "女主 @0.0 | 一位年轻女性，声音清澈温柔，语速偏慢，情绪平静。 | 你好，我是这部剧的女主角。\n男主 @1.2 | 一位年轻男性，声音低沉沉稳，语气干练。 | 收到，我去检查船桨，五分钟以后开拍。",
+        true,
+        true,
+        300,
+        4.5,
         "priority",
         -8.0,
         60,
