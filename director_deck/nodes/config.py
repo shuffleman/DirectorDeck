@@ -36,8 +36,9 @@ class DirectorDeckConfig:
     FUNCTION = "build"
     RETURN_TYPES = (TYPE_CONFIG,)
     RETURN_NAMES = ("config",)
-    DESCRIPTION = ("整条链唯一的配置来源。宽高须 32 倍数（或直接选 480p/720p/768p/1080p 预设）；"
-                   "fps 固定 24；handoff_frames 只允许 5/22/39/56（17n+5 衔接栅格）。")
+    DESCRIPTION = ("整条链唯一的配置来源。分辨率预设（480p/720p/768p/1080p × 横屏/竖屏/方形）"
+                   "优先于手填宽高；选“自定义”才用宽高（须 32 倍数）。fps 固定 24；"
+                   "handoff_frames 只允许 5/22/39/56（17n+5 衔接栅格）。")
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -77,10 +78,10 @@ class DirectorDeckConfig:
                 # 选“自定义”时才用上面的 width/height。
                 "resolution": (list(frames.RESOLUTION_OPTIONS), {
                     "default": frames.RESOLUTION_CUSTOM,
-                    "tooltip": "分辨率预设：480p/720p/768p/1080p（已对齐 32 倍数）；自定义=用宽高"}),
+                    "tooltip": "分辨率预设：选预设后宽高被忽略并自动同步；要手填宽高请选“自定义”"}),
                 "aspect_ratio": (list(frames.ASPECT_RATIOS), {
                     "default": frames.ASPECT_RATIOS[0],
-                    "tooltip": "画面比例：16:9 横屏 / 9:16 竖屏 / 1:1 方形"}),
+                    "tooltip": "画面比例：只对分辨率预设生效；自定义宽高时忽略"}),
             },
             "optional": {
                 "output_dir": ("STRING", {"default": "DirectorDeck"}),
@@ -102,14 +103,24 @@ class DirectorDeckConfig:
               resolution=frames.RESOLUTION_CUSTOM,
               aspect_ratio=frames.ASPECT_RATIOS[0]):
         # 画布硬约束先拦住：预设已经对齐 32；自定义宽高不是 32 倍数直接报错。
+        # 冲突规则：选了分辨率预设 = 预设赢，手填宽高会被忽略（前端会锁住宽高控件并同步）。
+        preset = str(resolution) in frames.RESOLUTION_PRESETS
         canvas_w, canvas_h = frames.resolve_canvas(
             width, height, resolution, aspect_ratio)
+        ignored_size: list[int] = []
+        if preset and (int(width), int(height)) != (int(canvas_w), int(canvas_h)):
+            ignored_size = [int(width), int(height)]
+            print(f"[DirectorDeck] 分辨率预设 {resolution} 生效：忽略手填宽高 "
+                  f"{width}x{height}，实际使用 {canvas_w}x{canvas_h}")
         config = {
             "schema": "DIRECTOR_CONFIG@1",
             "width": int(canvas_w),
             "height": int(canvas_h),
             "resolution": str(resolution),
             "aspect_ratio": str(aspect_ratio),
+            # 画布来源/被忽略的手填值：方便段元数据里追溯“为什么宽高和控件不一样”。
+            "canvas_source": "preset" if preset else "custom",
+            "canvas_ignored": ignored_size,
             "fps": FPS,  # 锁死 24，不允许用户改
             "segment_seconds": float(segment_seconds),
             # 衔接帧吸附到 5/22/39/56，用户填 1~56 都能接受。

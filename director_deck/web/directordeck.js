@@ -51,6 +51,7 @@ const I18N = {
     builtGenerators: "已按剧本创建 N 段视频生成器",
     builtOutput: "已补全 FinalCut / 视频输出节点",
     noTakes: "画布上没有“视频生成器”，先放一个或点“按剧本建生成器”",
+    canvasLocked: "分辨率预设生效：宽/高自动同步；要手填宽高请把“分辨率”改成“自定义（用宽高）”",
     helpText:
       "用法：\n1) 先放好 模型加载器 / 全局配置 / 剧本加载器 / 视频生成器；\n2) 选中某个“视频生成器”，点“添加下一段”自动接链；\n3) 想单独换素材/音色/剧本，点对应按钮，会把 policy 自动切到 replace；\n4) 想重抽某段，选中它点“重抽选中段”。",
   },
@@ -86,6 +87,7 @@ const I18N = {
     builtGenerators: "Created N Take nodes from the script",
     builtOutput: "FinalCut / video output nodes created",
     noTakes: "No DirectorTake on canvas. Add one first, or click 'Build Take chain'",
+    canvasLocked: "Resolution preset is active: width/height follow it. Choose '自定义（用宽高）' to edit them manually.",
     helpText:
       "Workflow:\n1) Place ModelLoader / Config / ScriptDesk / DirectorTake;\n2) Select a DirectorTake and click 'Add next segment' to chain it;\n3) Click override buttons to add assets/voice/brief nodes (policy auto = replace);\n4) Select a segment and click 'Reroll' to re-generate with a new seed.",
   },
@@ -142,6 +144,14 @@ function setWidget(node, name, value) {
   if (!w) return false;
   w.value = value;
   return true;
+}
+
+function setInputLabel(node, name, label) {
+  const w = widget(node, name);
+  if (w) {
+    w.label = label;
+    w.localized_name = label;
+  }
 }
 
 function inputIndex(node, name) {
@@ -724,7 +734,12 @@ function syncConfigCanvas(node) {
   const resolution = String(widgetValue(node, "resolution") || "");
   const aspect = String(widgetValue(node, "aspect_ratio") || "16:9 横屏");
   const table = RESOLUTION_PRESETS[resolution];
-  if (!table || !table[aspect]) return;  // 自定义/未知：保留手填宽高
+  const preset = !!table;
+  // 预设生效时把宽高标成“自动”，避免用户以为手填生效。
+  setInputLabel(node, "width", preset ? "宽度（预设自动）" : "宽度");
+  setInputLabel(node, "height", preset ? "高度（预设自动）" : "高度");
+  setInputLabel(node, "aspect_ratio", preset ? "画面比例" : "画面比例（自定义时忽略）");
+  if (!preset || !table[aspect]) return;  // 自定义/未知：保留手填宽高
   const [width, height] = table[aspect];
   setWidget(node, "width", width);
   setWidget(node, "height", height);
@@ -732,9 +747,14 @@ function syncConfigCanvas(node) {
 }
 
 function bindConfigCanvas(node) {
+  if (node.__ddConfigBound) {
+    syncConfigCanvas(node);
+    return;
+  }
+  node.__ddConfigBound = true;
   for (const name of ["resolution", "aspect_ratio"]) {
     const w = widget(node, name);
-    if (!w || w.__ddCanvasBound) continue;
+    if (!w) continue;
     const previous = w.callback;
     w.callback = function (...args) {
       if (previous) {
@@ -742,7 +762,25 @@ function bindConfigCanvas(node) {
       }
       syncConfigCanvas(node);
     };
-    w.__ddCanvasBound = true;
+  }
+  // 预设生效时，手改宽高会被立刻改回预设值（并提示一次），避免“控件和实际不一致”。
+  for (const name of ["width", "height"]) {
+    const w = widget(node, name);
+    if (!w) continue;
+    const previous = w.callback;
+    w.callback = function (...args) {
+      if (previous) {
+        try { previous.apply(this, args); } catch (e) { console.warn(e); }
+      }
+      const active = !!RESOLUTION_PRESETS[String(widgetValue(node, "resolution") || "")];
+      if (!active) return;
+      syncConfigCanvas(node);
+      const now = Date.now();
+      if (!node.__ddLockToastAt || now - node.__ddLockToastAt > 2000) {
+        node.__ddLockToastAt = now;
+        toast(t("canvasLocked"), false);
+      }
+    };
   }
   syncConfigCanvas(node);
 }

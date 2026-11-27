@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.8.3 — 明确“分辨率预设 vs 手填宽高”的冲突规则（2026-11-28）
+
+### 变更
+- **规则定死：分辨率预设优先**。选了 `resolution` 预设时：
+  - 后端以预设尺寸为准，忽略 `width/height`；若有冲突，控制台打印提醒，
+    段元数据新增 `config.canvas_source="preset"` 和 `config.canvas_ignored=[手填宽,高]`
+    方便追溯；
+  - 前端宽高控件标成“预设自动”，手改会被自动改回预设值并 toast 提示一次；
+  - `aspect_ratio` 只在预设生效时有效（自定义宽高时标签显示“自定义时忽略”）。
+- 选「自定义（用宽高）」时行为不变：以手填宽高为准，`aspect_ratio` 忽略。
+- 段级 config override 明确禁止 `resolution/aspect_ratio`（整链一致）。
+
+### 验证
+- 复用 480p 真机数据：API 里故意保留旧 `width=640, height=352` + `resolution=480p`，
+  实际出片仍是 **864×480**，段元数据 `canvas_source=preset`（预设优先级已生效）。
+- JS `node --check` 通过；单测 **145 个全绿**。
+
 ## 0.8.2 — 全局配置支持分辨率预设（480p/720p/768p/1080p）（2026-11-28）
 
 ### 新增

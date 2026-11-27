@@ -64,8 +64,11 @@
 
 | 字段 | 类型 | 默认 | 说明 |
 |---|---|---|---|
-| `width` / `height` | int | 640/352 | 须 32 倍数 |
-| `aspect_ratio` | str | `16:9` | 仅用于展示/反推宽高 |
+| `width` / `height` | int | 640/352 | 须 32 倍数。**选分辨率预设时由预设推导，手填值被忽略**（记入 `canvas_ignored`） |
+| `resolution` | str | `自定义（用宽高）` | `自定义（用宽高）` / `480p` / `720p` / `768p` / `1080p`；选预设时宽高以预设为准 |
+| `aspect_ratio` | str | `16:9 横屏` | `16:9 横屏` / `9:16 竖屏` / `1:1 方形`；只对分辨率预设生效，自定义宽高时忽略 |
+| `canvas_source` | str | `custom` | `preset` / `custom`：本次画布是预设推导还是手填 |
+| `canvas_ignored` | list[int] | `[]` | 预设生效时被忽略的手填 `[width, height]`（便于追溯） |
 | `fps` | int | 24 | 锁死不可改 |
 | `segment_seconds` | float | 5.0 | 默认每段秒数（可被 brief/script 覆盖） |
 | `handoff_frames` | int | 22 | 衔接帧，只允许 5/22/39/56 |
@@ -88,7 +91,7 @@
 
 允许字段：`segment_seconds`、`handoff_frames`、`sampler_name`、`sigmas_string`、`interpolate_to_steps`、`denoise`、`seed_strategy`、`seed_base`、`preview`、`vram_policy`。
 
-**禁止**：`fps`、`width/height`（整链一致）、模型相关、输出目录。
+**禁止**：`fps`、`width/height`、`resolution/aspect_ratio`（整链一致）、模型相关、输出目录。
 
 ### 2.4 `DIRECTOR_ASSETS`（schema 1）
 
