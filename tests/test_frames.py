@@ -74,5 +74,36 @@ class SegmentPlanTest(unittest.TestCase):
         self.assertEqual(ctx.exception.code, "DD-E021")
 
 
+class ResolutionPresetTest(unittest.TestCase):
+    def test_presets_are_32_aligned(self):
+        for resolution, table in frames.RESOLUTION_PRESETS.items():
+            for aspect, (width, height) in table.items():
+                self.assertEqual(width % 32, 0, f"{resolution}/{aspect} 宽不是 32 倍数")
+                self.assertEqual(height % 32, 0, f"{resolution}/{aspect} 高不是 32 倍数")
+
+    def test_480p_landscape(self):
+        self.assertEqual(frames.resolve_canvas(640, 352, "480p", "16:9 横屏"), (864, 480))
+
+    def test_portrait_swaps(self):
+        self.assertEqual(frames.resolve_canvas(640, 352, "768p", "9:16 竖屏"), (768, 1376))
+
+    def test_1080p(self):
+        self.assertEqual(frames.resolve_canvas(640, 352, "1080p", "16:9 横屏"), (1920, 1088))
+        self.assertEqual(frames.resolve_canvas(640, 352, "1080p", "1:1 方形"), (1088, 1088))
+
+    def test_custom_uses_width_height(self):
+        self.assertEqual(frames.resolve_canvas(640, 352), (640, 352))
+
+    def test_custom_invalid_raises(self):
+        with self.assertRaises(Exception):
+            frames.resolve_canvas(100, 352)
+
+    def test_unknown_resolution_or_aspect_raises(self):
+        with self.assertRaises(Exception):
+            frames.resolve_canvas(640, 352, "4k", "16:9 横屏")
+        with self.assertRaises(Exception):
+            frames.resolve_canvas(640, 352, "480p", "2:1")
+
+
 if __name__ == "__main__":
     unittest.main()

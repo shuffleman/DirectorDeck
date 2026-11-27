@@ -382,6 +382,7 @@ def config_node() -> dict:
                     "seed_base": 12345, "preview": True, "vram_policy": "release",
                     "cleanup_segments": "ask", "seam_enabled": True,
                     "seam_window": 12, "seam_max_add": 0.10, "seam_gain_limit": 0.04,
+                    "resolution": "自定义（用宽高）", "aspect_ratio": "16:9 横屏",
                     "output_dir": "DirectorDeck"},
                 title="② 全局配置")
 

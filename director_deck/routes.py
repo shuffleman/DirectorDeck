@@ -62,7 +62,7 @@ def setup_routes() -> None:
     @routes.get("/directordeck/health")
     async def health(request):
         return web.json_response({"ok": True, "time": time.time(),
-                                  "version": "0.8.1"})
+                                  "version": "0.8.2"})
 
     @routes.get("/directordeck/segments")
     async def segments(request):

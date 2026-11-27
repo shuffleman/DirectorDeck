@@ -29,7 +29,7 @@ ComfyUI 节点库：**AI 短剧导演台**。把「模型 + 素材 + 剧本 + �
 | 节点 | 作用 |
 |---|---|
 | `DirectorDeck_ModelLoader` | 主干 + 文本编码器 + 视频/音频 VAE + 最多 4 个 LoRA + flow shift |
-| `DirectorDeck_DirectorConfig` | 画布/段时长/衔接帧/采样/种子/预览/显存策略 + 接缝参数 |
+| `DirectorDeck_DirectorConfig` | 分辨率预设（480p/720p/768p/1080p × 横屏/竖屏/方形）或自定义宽高、段时长、衔接帧、采样、种子、预览、显存策略 + 接缝参数 |
 | `DirectorDeck_AssetShelf` | 最多 9 张参考图，槽位固定（@图片N） |
 | `DirectorDeck_ScriptDesk` | 剧本 → 结构化段落（时长/对白/素材引用） |
 | `DirectorDeck_SegmentBrief` | 段级剧本覆盖（接到生成器 brief 输入） |
@@ -70,6 +70,10 @@ ComfyUI 节点库：**AI 短剧导演台**。把「模型 + 素材 + 剧本 + �
 
 - 生成器按 `segment_index` 取段；接上 `previous_segment` 后，续写模式由 `continuity` 决定：
   `start`（首段）、`guide_tail`（RGB 尾帧+尾音引导）、`latent_tail`（直接搬 latent 尾 token，最快）、`none`。
+- **全局画布尺寸**：在 `DirectorDeck_DirectorConfig` 里选 `分辨率`（480p / 720p / 768p / 1080p）+
+  `画面比例`（16:9 横屏 / 9:16 竖屏 / 1:1 方形）即可；选预设后 `宽/高` 控件自动同步且被忽略，
+  选「自定义（用宽高）」时才手填（必须是 32 的倍数）。预设尺寸已对齐 H3 的 32 倍数要求，
+  例如 480p 横屏 = 864×480、768p 横屏 = 1376×768、1080p 横屏 = 1920×1088。
 - 每段的素材/剧本/音色/配置都要显式选 `inherit`（沿用）或 `replace`/`overrides`（覆盖）；
   链尾用 `FinalCut` 合并（自动裁掉衔接头，写 manifest 方便追溯）。
 - `guide_tail` 与 `latent_tail` 需要上一段；`latent_tail` 与 `guide_tail` 可混用，但同一链内模型必须一致。

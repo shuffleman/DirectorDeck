@@ -14,7 +14,7 @@ from __future__ import annotations
 import os
 import traceback
 
-__version__ = "0.8.1"
+__version__ = "0.8.2"
 
 NODE_CLASS_MAPPINGS: dict = {}
 NODE_DISPLAY_NAME_MAPPINGS: dict = {}

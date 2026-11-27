@@ -74,6 +74,8 @@ def config_node() -> dict:
             # M2 接缝参数（不填会用默认值，但 API 格式要求显式给）
             "seam_enabled": True, "seam_window": 12,
             "seam_max_add": 0.10, "seam_gain_limit": 0.04,
+            # 分辨率预设（追加在最后；自定义时才用上面的 width/height）
+            "resolution": "自定义（用宽高）", "aspect_ratio": "16:9 横屏",
         },
     }
 

@@ -36,8 +36,8 @@ class DirectorDeckConfig:
     FUNCTION = "build"
     RETURN_TYPES = (TYPE_CONFIG,)
     RETURN_NAMES = ("config",)
-    DESCRIPTION = ("整条链唯一的配置来源。宽高须 32 倍数；fps 固定 24；"
-                   "handoff_frames 只允许 5/22/39/56（17n+5 衔接栅格）。")
+    DESCRIPTION = ("整条链唯一的配置来源。宽高须 32 倍数（或直接选 480p/720p/768p/1080p 预设）；"
+                   "fps 固定 24；handoff_frames 只允许 5/22/39/56（17n+5 衔接栅格）。")
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -72,6 +72,15 @@ class DirectorDeckConfig:
                 "seam_gain_limit": ("FLOAT", {"default": seam.GAIN_LIMIT_DEFAULT, "min": 0.0,
                                               "max": 0.2, "step": 0.005,
                                               "tooltip": "允许的增益偏差上限"}),
+                # ---- 分辨率预设（追加在最后，保持旧控件顺序不变）----
+                # 选 480p/720p/768p/1080p 时用预设尺寸，宽高控件会被忽略；
+                # 选“自定义”时才用上面的 width/height。
+                "resolution": (list(frames.RESOLUTION_OPTIONS), {
+                    "default": frames.RESOLUTION_CUSTOM,
+                    "tooltip": "分辨率预设：480p/720p/768p/1080p（已对齐 32 倍数）；自定义=用宽高"}),
+                "aspect_ratio": (list(frames.ASPECT_RATIOS), {
+                    "default": frames.ASPECT_RATIOS[0],
+                    "tooltip": "画面比例：16:9 横屏 / 9:16 竖屏 / 1:1 方形"}),
             },
             "optional": {
                 "output_dir": ("STRING", {"default": "DirectorDeck"}),
@@ -89,13 +98,18 @@ class DirectorDeckConfig:
               seed_strategy, seed_base, preview, vram_policy, cleanup_segments,
               output_dir="DirectorDeck", seam_enabled=True,
               seam_window=seam.WINDOW_DEFAULT, seam_max_add=seam.MAX_ADD_DEFAULT,
-              seam_gain_limit=seam.GAIN_LIMIT_DEFAULT):
-        # 画布硬约束先拦住：不是 32 倍数直接报错，别等模型加载完才炸。
-        frames.validate_canvas(width, height)
+              seam_gain_limit=seam.GAIN_LIMIT_DEFAULT,
+              resolution=frames.RESOLUTION_CUSTOM,
+              aspect_ratio=frames.ASPECT_RATIOS[0]):
+        # 画布硬约束先拦住：预设已经对齐 32；自定义宽高不是 32 倍数直接报错。
+        canvas_w, canvas_h = frames.resolve_canvas(
+            width, height, resolution, aspect_ratio)
         config = {
             "schema": "DIRECTOR_CONFIG@1",
-            "width": int(width),
-            "height": int(height),
+            "width": int(canvas_w),
+            "height": int(canvas_h),
+            "resolution": str(resolution),
+            "aspect_ratio": str(aspect_ratio),
             "fps": FPS,  # 锁死 24，不允许用户改
             "segment_seconds": float(segment_seconds),
             # 衔接帧吸附到 5/22/39/56，用户填 1~56 都能接受。

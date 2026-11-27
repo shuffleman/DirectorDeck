@@ -590,6 +590,7 @@ const NODE_INPUT_ZH = {
     cleanup_segments: "段显存清理", seam_enabled: "接缝修正",
     seam_window: "接缝窗口", seam_max_add: "接缝最大补偿",
     seam_gain_limit: "接缝增益上限", output_dir: "输出目录",
+    resolution: "分辨率", aspect_ratio: "画面比例",
   },
   DirectorDeck_AssetShelf: {
     image_1: "图片 1", image_2: "图片 2", image_3: "图片 3", image_4: "图片 4",
@@ -708,6 +709,42 @@ function localizeNode(node) {
       }
     }
   }
+  if (node.type === "DirectorDeck_DirectorConfig") bindConfigCanvas(node);
+}
+
+// 分辨率预设和 backend core/frames.py 保持一致（只用于把宽高控件同步成预设值）。
+const RESOLUTION_PRESETS = {
+  "480p": { "16:9 横屏": [864, 480], "9:16 竖屏": [480, 864], "1:1 方形": [480, 480] },
+  "720p": { "16:9 横屏": [1280, 704], "9:16 竖屏": [704, 1280], "1:1 方形": [704, 704] },
+  "768p": { "16:9 横屏": [1376, 768], "9:16 竖屏": [768, 1376], "1:1 方形": [768, 768] },
+  "1080p": { "16:9 横屏": [1920, 1088], "9:16 竖屏": [1088, 1920], "1:1 方形": [1088, 1088] },
+};
+
+function syncConfigCanvas(node) {
+  const resolution = String(widgetValue(node, "resolution") || "");
+  const aspect = String(widgetValue(node, "aspect_ratio") || "16:9 横屏");
+  const table = RESOLUTION_PRESETS[resolution];
+  if (!table || !table[aspect]) return;  // 自定义/未知：保留手填宽高
+  const [width, height] = table[aspect];
+  setWidget(node, "width", width);
+  setWidget(node, "height", height);
+  app.graph.setDirtyCanvas(true, true);
+}
+
+function bindConfigCanvas(node) {
+  for (const name of ["resolution", "aspect_ratio"]) {
+    const w = widget(node, name);
+    if (!w || w.__ddCanvasBound) continue;
+    const previous = w.callback;
+    w.callback = function (...args) {
+      if (previous) {
+        try { previous.apply(this, args); } catch (e) { console.warn(e); }
+      }
+      syncConfigCanvas(node);
+    };
+    w.__ddCanvasBound = true;
+  }
+  syncConfigCanvas(node);
 }
 
 // ------------------------------------------------------------------ 注册

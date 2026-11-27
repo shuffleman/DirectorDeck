@@ -1,5 +1,5 @@
 {
-  "id": "5479e2b9-a27f-4c94-9470-414cbe023c75",
+  "id": "cd1592ea-7d98-4652-bdb7-c1d38ef60d16",
   "revision": 0,
   "last_node_id": 7,
   "last_link_id": 6,
@@ -396,6 +396,24 @@
           "link": null
         },
         {
+          "localized_name": "resolution",
+          "name": "resolution",
+          "type": "COMBO",
+          "widget": {
+            "name": "resolution"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "aspect_ratio",
+          "name": "aspect_ratio",
+          "type": "COMBO",
+          "widget": {
+            "name": "aspect_ratio"
+          },
+          "link": null
+        },
+        {
           "localized_name": "output_dir",
           "name": "output_dir",
           "type": "STRING",
@@ -439,6 +457,8 @@
         12,
         0.1,
         0.04,
+        "自定义（用宽高）",
+        "16:9 横屏",
         "DirectorDeck"
       ]
     },

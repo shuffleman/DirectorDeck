@@ -224,3 +224,50 @@ def tail_token_boundary(sample_frames: int, head_frames: int) -> tuple[int, int]
     k0 = max(0, min(k0, token_count))
     masked_frames = sample_frames - boundaries[k0]
     return k0, masked_frames
+
+# ---------------------------------------------------------------- 分辨率预设
+# 用户嘴里说的“480p / 768p / 1080p”要落到 H3 能用的 32 倍数画布。
+# 因为 16:9 的常见尺寸（854x480、1280x720、1920x1080）不一定两边都是 32 的倍数，
+# 这里直接给一组“已经对齐 32”的预设，避免用户自己算。
+RESOLUTION_CUSTOM = "自定义（用宽高）"
+RESOLUTION_OPTIONS = (RESOLUTION_CUSTOM, "480p", "720p", "768p", "1080p")
+ASPECT_RATIOS = ("16:9 横屏", "9:16 竖屏", "1:1 方形")
+
+RESOLUTION_PRESETS: dict[str, dict[str, tuple[int, int]]] = {
+    "480p": {
+        "16:9 横屏": (864, 480),
+        "9:16 竖屏": (480, 864),
+        "1:1 方形": (480, 480),
+    },
+    "720p": {
+        "16:9 横屏": (1280, 704),
+        "9:16 竖屏": (704, 1280),
+        "1:1 方形": (704, 704),
+    },
+    "768p": {
+        "16:9 横屏": (1376, 768),
+        "9:16 竖屏": (768, 1376),
+        "1:1 方形": (768, 768),
+    },
+    "1080p": {
+        "16:9 横屏": (1920, 1088),
+        "9:16 竖屏": (1088, 1920),
+        "1:1 方形": (1088, 1088),
+    },
+}
+
+
+def resolve_canvas(width: int, height: int, resolution: str = RESOLUTION_CUSTOM,
+                   aspect_ratio: str = ASPECT_RATIOS[0]) -> tuple[int, int]:
+    """全局画布尺寸解析：选了分辨率预设就用预设，选“自定义”就用宽高。
+
+    返回 (width, height)，保证两边都是 32 的倍数；预设表本身就是对齐好的。
+    """
+    if resolution in RESOLUTION_PRESETS:
+        table = RESOLUTION_PRESETS[resolution]
+        if aspect_ratio not in table:
+            raise error("DD-E004", f"未知画面比例 {aspect_ratio!r}（可选 {ASPECT_RATIOS}）")
+        return validate_canvas(*table[aspect_ratio])
+    if resolution != RESOLUTION_CUSTOM:
+        raise error("DD-E004", f"未知分辨率 {resolution!r}（可选 {RESOLUTION_OPTIONS}）")
+    return validate_canvas(width, height)
