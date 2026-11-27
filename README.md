@@ -14,7 +14,7 @@ ComfyUI 节点库：**AI 短剧导演台**。把“模型 + 素材 + 剧本 + �
 | **M1 单段闭环** | ✅ | 模型加载器、全局配置、资产管理器、剧本加载器、段级剧本、视频生成器；真机出片 |
 | **M2 链式多段** | ✅ | 帧计划器、尾帧/尾音引导续写、接缝曝光修正、多段合并、抽卡缓存；3 段 16.5s 真机出片 |
 | **M3 锁音+二采** | ✅ | 数字人锁音（逐流 noise_mask=0 真锁）、AV latent 拆合手术、二采（低 denoise 再采样）、音频 VAE 编解码；真机验证 |
-| M4 前端体验 | ⬜ | 素材画布 / 剧本编辑器 / 添加下一段 / 抽卡按钮 |
+| **M4 前端体验** | ✅ | 导演台浮动面板（添加下一段/覆盖节点/重抽/段清单）、后端 JSON 路由、FinalCut 源音频无损混流 |
 | M5 发布 | ⬜ | 文档、示例工作流、Comfy Registry |
 
 ## 设计要点（已定稿）
@@ -36,7 +36,7 @@ ComfyUI 节点库：**AI 短剧导演台**。把“模型 + 素材 + 剧本 + �
 | `DirectorDeck_FramePlanner` | 整条链的 17k+5 帧计划（head/delivery/sample/时间轴） |
 | `DirectorDeck_DirectorTake` | 按段生成；接 `previous_segment` 即自动尾帧+尾音引导、接缝修正 |
 | `DirectorDeck_SeamFixer` | 独立接缝修正（也可单独修已有两段） |
-| `DirectorDeck_FinalCut` | 多段合并：自动裁衔接头、拼音轨、写 manifest |
+| `DirectorDeck_FinalCut` | 多段合并：自动裁衔接头、拼音轨、写 manifest；可选 `audio_from_source` 用锁音源轨（无损） |
 | `DirectorDeck_SegmentCache` | 抽卡记录（status/store/clear，只存元数据） |
 | `DirectorDeck_VoiceLock` | 数字人锁音器：角色→音频槽+时间轴起点（真锁音） |
 | `DirectorDeck_Refiner` | 二采工具：低 denoise 再采样（音频锁定）或 lanczos 放大 |
@@ -95,6 +95,25 @@ python tools\run_example.py examples\m3_digital_human_api.json --server http://1
 | 段元数据 | `lock`/`refine` 字段落盘，可追溯 |
 
 > 注：要做到“成片里音频与源文件逐样点一致”，应在最终合并时直接把源音频混流（M4 的 FinalCut 增加 `audio_from_source` 选项）；锁音目前保证的是**内容/口型对应**，不是无损封装。
+
+## M4 前端体验（已验证）
+
+- **浮动面板**：右下角“DirectorDeck 导演台”，按钮包括
+  `添加下一段 / 加素材覆盖 / 加数字人锁音 / 加段级剧本 / 重抽选中段 / 查看段清单 / 帮助`，中英双语。
+- **自动接线**：添加下一段会复制模型/配置/剧本上游连线、接 `previous_segment`、把 6 个 policy 填成
+  `inherit/inherit/inherit/inherit/inherit/guide_tail`；覆盖节点会自动把对应 policy 切到 `replace`。
+- **重抽**：改选中段 seed 并 `queuePrompt`。
+- **后端路由**：`/directordeck/health`、`/directordeck/segments`、`/directordeck/manifests`（面板“段清单”用）。
+- **验证**：`node --check` 通过；8189 的 `/extensions` 收录 `/extensions/DirectorDeck/directordeck.js`
+  且 GET 返回 200；三个路由均返回真实段/清单数据。
+
+**M4 源音频混流验证**（锁音段 → FinalCut `audio_from_source=true` → SaveAudio）：
+
+| 指标 | 结果 |
+|---|---|
+| 成片 | 124 帧 / 5.16s（与一采一致） |
+| 清单 | `audio_source="source"`，`total_frames=124` |
+| 音频 | FLAC 与源 wav **样点相关 1.0，最大绝对差 0.0**（FLAC 无损，逐样点一致） |
 
 ## 目录
 

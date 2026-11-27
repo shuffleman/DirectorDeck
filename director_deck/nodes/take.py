@@ -259,6 +259,7 @@ class DirectorDeckTake:
         #      这是“真锁音”——不是 AddGuide 的条件锚定，而是 noise_mask=0。
         lock_info = {"applied": False}
         locked_audio_latent = None
+        lock_source_audio = None
         if resolved.cast.get("lock_audio"):
             roles_with_audio = [r for r in resolved.cast.get("roles") or []
                                 if r.get("audio_data")]
@@ -272,6 +273,9 @@ class DirectorDeckTake:
                 if float(track.abs().max()) > 0:
                     latent, locked_audio_latent = av_latent.lock_audio(
                         latent, bundle["audio_vae"], track, vae_rate)
+                    # 源音轨留在运行期仓库里：成片合并时可以选“直接用源音频”，
+                    # 做到逐样点无损（绕过神经音频编解码器的相位重建）。
+                    lock_source_audio = {"waveform": track, "sample_rate": vae_rate}
                     lock_info = {
                         "applied": True,
                         "roles": [r.get("name") for r in roles_with_audio],
@@ -347,6 +351,8 @@ class DirectorDeckTake:
             # 接缝匹配只看最后 24 帧。
             "seam_tail": images[-min(24, images.shape[0]):].clone(),
             "audio_full": audio,
+            # 锁音时的源音轨（成片可直接混流，做到逐样点无损）。
+            "lock_source_audio": lock_source_audio,
             "config": resolved.config,
             "assets": resolved.assets,
             "cast": resolved.cast,

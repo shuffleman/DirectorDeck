@@ -17,6 +17,8 @@ try:
         __version__,
     )
 
+    # 前端面板放在 director_deck/web/（这样 pip 安装也能把它带进包里）。
+    # ComfyUI 会把它映射到 /extensions/DirectorDeck/directordeck.js。
     _web = os.path.join(os.path.dirname(os.path.abspath(__file__)), "director_deck", "web")
     WEB_DIRECTORY = "./director_deck/web" if os.path.isdir(_web) else None
 except Exception:  # 加载失败时也要让 ComfyUI 继续启动，同时把原因打出来

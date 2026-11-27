@@ -277,13 +277,52 @@ def m3_digital_human() -> dict:
     return graph
 
 
+def m4_lock_finalcut() -> dict:
+    """M4 示例：锁音段 -> FinalCut（直接混源音频）-> mp4 + wav。
+
+    验证点：成片音轨与源 wav 逐样点一致（不再经过音频 VAE 的相位重建）。
+    """
+    graph = {
+        "1": loader_node(),
+        "2": config_node(),
+        "3": script_node(),
+        "5": {"class_type": "LoadAudio", "inputs": {"audio": "directordeck_voice.wav"}},
+        "6": {"class_type": "DirectorDeck_VoiceLock",
+              "inputs": {"roles": "女主: 1, 0.0", "lock_audio": True,
+                         "audio_1": ["5", 0]}},
+        "10": {"class_type": "DirectorDeck_DirectorTake",
+               "inputs": {
+                   "bundle": ["1", 0], "config": ["2", 0], "script": ["3", 0],
+                   "segment_index": 1, "bundle_policy": "provided",
+                   "config_policy": "inherit", "assets_policy": "clear",
+                   "brief_policy": "inherit", "cast_policy": "replace",
+                   "continuity": "start", "seed": 0, "cast": ["6", 0]}},
+        "40": {"class_type": "DirectorDeck_FinalCut",
+               "inputs": {"segment_1": ["10", 0], "images_1": ["10", 1],
+                          "audio_1": ["10", 2], "save_manifest": True,
+                          "audio_from_source": True}},
+        "41": {"class_type": "CreateVideo",
+               "inputs": {"images": ["40", 0], "fps": 24.0, "audio": ["40", 1],
+                          "codec": "h264"}},
+        "42": {"class_type": "SaveVideo",
+               "inputs": {"video": ["41", 0],
+                          "filename_prefix": "DirectorDeck/M4_lock_source_audio",
+                          "format": "auto", "codec": "auto"}},
+        "43": {"class_type": "SaveAudio",
+               "inputs": {"audio": ["40", 1],
+                          "filename_prefix": "DirectorDeck/M4_lock_source"}},
+    }
+    return graph
+
+
 def main() -> int:
     os.makedirs(EXAMPLE_DIR, exist_ok=True)
     for name, graph in (("m1_single_segment_api", single()),
                         ("m1_ref2va_api", ref2va()),
                         ("m2_chain_api", m2_chain()),
                         ("m2_reroll_seg2_api", m2_reroll()),
-                        ("m3_digital_human_api", m3_digital_human())):
+                        ("m3_digital_human_api", m3_digital_human()),
+                        ("m4_lock_finalcut_api", m4_lock_finalcut())):
         path = os.path.join(EXAMPLE_DIR, name + ".json")
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(graph, fh, ensure_ascii=False, indent=2)

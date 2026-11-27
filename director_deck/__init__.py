@@ -37,6 +37,15 @@ except Exception:  # 其它异常说明是真的写错了，打完整堆栈方�
 _WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
 WEB_DIRECTORY = "./web" if os.path.isdir(_WEB_DIR) else None
 
+# 后端小路由：给前端面板提供“段清单 / 成片清单 / 健康检查”。
+# 注意：必须放在节点 import 之后，这时 PromptServer.instance 已经就绪。
+try:
+    from . import routes as _routes
+
+    _routes.setup_routes()
+except Exception:  # 非 ComfyUI 环境或路由已被注册时都不要影响加载
+    pass
+
 try:
     print(f"[DirectorDeck] v{__version__} loaded (nodes: {len(NODE_CLASS_MAPPINGS)})")
 except Exception:

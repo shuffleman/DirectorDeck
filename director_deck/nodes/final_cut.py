@@ -18,6 +18,7 @@ import time
 import folder_paths
 import torch
 
+from ..adapters import segment_store
 from ..core.types import CATEGORY, FPS, TYPE_MANIFEST, TYPE_SEGMENT
 
 MAX_SEGMENTS = 4  # M2 先支持 4 段（15~20 秒），M4 再扩到任意段
@@ -47,7 +48,33 @@ class DirectorDeckFinalCut:
         # 清单落盘开关：想留档就开，只想快速看片就关。
         optional["save_manifest"] = ("BOOLEAN", {"default": True,
                                                  "tooltip": "把合并清单写到 output/DirectorDeck/manifests/"})
+        # 源音频混流：数字人锁音段可以直接用“当初锁进去的源音轨”，
+        # 做到逐样点无损；不开则用段解码出来的音轨（会经过神经音频 VAE）。
+        optional["audio_from_source"] = ("BOOLEAN", {"default": False,
+                                                     "tooltip": "锁音段优先使用源音轨（无损），M4 新增"})
         return {"required": required, "optional": optional}
+
+    @staticmethod
+    def _source_audio_slice(segment: dict, head: int, delivery: int) -> dict | None:
+        """从运行期仓库拿“锁音源轨”，按本段交付区间切一段。
+
+        为什么需要它：H3 音频 VAE 是神经编解码器，解码会重建波形相位；
+        如果成片要求音频与源文件逐样点一致，就得在合并时直接混源音轨。
+        """
+        store_key = segment.get("store_key")
+        if not store_key:
+            return None
+        snapshot = segment_store.get(store_key)
+        if not snapshot:
+            return None
+        source = snapshot.get("lock_source_audio")
+        if not source:
+            return None
+        sample_rate = int(source["sample_rate"])
+        start = int(round(head / FPS * sample_rate))
+        count = int(round(delivery / FPS * sample_rate))
+        waveform = source["waveform"][..., start:start + count]
+        return {"waveform": waveform, "sample_rate": sample_rate}
 
     @staticmethod
     def _trim_audio(audio: dict, head_frames: int) -> dict:
@@ -59,7 +86,8 @@ class DirectorDeckFinalCut:
             waveform = waveform[..., start:]
         return {"waveform": waveform, "sample_rate": sample_rate}
 
-    def merge(self, segment_1, images_1, audio_1, save_manifest=True, **kwargs):
+    def merge(self, segment_1, images_1, audio_1, save_manifest=True,
+              audio_from_source=False, **kwargs):
         pieces_images = []
         pieces_audio = []
         metas = []
@@ -72,18 +100,25 @@ class DirectorDeckFinalCut:
             if segment is None or images is None or audio is None:
                 continue
             head = 0 if first else int(segment.get("head") or 0)
+            delivery = int(images.shape[0]) - head
             # 画面：丢头帧，留 delivery（最后一帧就是段尾，不用再裁尾巴）。
             pieces_images.append(images[head:])
-            # 音轨：按同样的 head 时长裁开头。
-            pieces_audio.append(self._trim_audio(audio, head))
+            # 音轨：优先用“锁音源轨”（无损），没有才用解码音轨按 head 裁。
+            source_audio = (self._source_audio_slice(segment, head, delivery)
+                            if audio_from_source else None)
+            if source_audio is not None:
+                pieces_audio.append(source_audio)
+            else:
+                pieces_audio.append(self._trim_audio(audio, head))
             metas.append({
                 "index": segment.get("index", index),
                 "head": head,
-                "delivery": int(images.shape[0]) - head,
+                "delivery": delivery,
                 "sample": int(images.shape[0]),
                 "seed": segment.get("seed"),
                 "prompt": segment.get("prompt"),
                 "store_key": segment.get("store_key"),
+                "audio_source": "source" if source_audio is not None else "decoded",
                 "seam": segment.get("seam"),
             })
             first = False

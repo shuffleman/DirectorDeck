@@ -24,7 +24,7 @@ Icon = "https://raw.githubusercontent.com/shuffleman/DirectorDeck/main/assets/di
 
 [tool.setuptools]
 include-package-data = true
-packages = ["director_deck", "director_deck.core"]
+packages = ["director_deck", "director_deck.core", "director_deck.adapters", "director_deck.nodes"]
 
 [tool.setuptools.package-data]
-director_deck = ["web/*"]
+director_deck = ["web/*.js"]

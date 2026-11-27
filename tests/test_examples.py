@@ -90,6 +90,19 @@ class ExampleTest(unittest.TestCase):
         self.assertEqual(refiner["inputs"]["mode"], "latent_2nd")
         self.assertLessEqual(float(refiner["inputs"]["denoise"]), 0.5)
 
+    def test_m4_lock_finalcut(self):
+        graph = load("m4_lock_finalcut_api.json")
+        self._check(graph)
+        classes = {n["class_type"] for n in graph.values()}
+        for expected in ("DirectorDeck_VoiceLock", "DirectorDeck_DirectorTake",
+                         "DirectorDeck_FinalCut", "CreateVideo", "SaveVideo",
+                         "SaveAudio"):
+            self.assertIn(expected, classes)
+        cut = next(n for n in graph.values()
+                   if n["class_type"] == "DirectorDeck_FinalCut")
+        # M4 的关键：合并时直接用锁音源轨，做到无损。
+        self.assertTrue(cut["inputs"]["audio_from_source"])
+
 
 if __name__ == "__main__":
     unittest.main()
