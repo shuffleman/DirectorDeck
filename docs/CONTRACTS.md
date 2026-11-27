@@ -79,6 +79,10 @@
 | `vram_policy` | str | `release` | `release/unload/none` |
 | `output_dir` | str | `DirectorDeck` | output 子目录 |
 | `cleanup_segments` | str | `ask` | `ask/auto/keep` |
+| `seam_enabled` | bool | true | 段间是否自动做曝光/亮度修正（M2） |
+| `seam_window` | int | 12 | 接缝匹配比较的帧数（2–48） |
+| `seam_max_add` | float | 0.10 | 允许的亮度偏移上限 |
+| `seam_gain_limit` | float | 0.04 | 允许的增益偏差上限 |
 
 ### 2.3 `DIRECTOR_CONFIG_OVERRIDE`（schema 1，段级安全子集）
 
@@ -304,7 +308,7 @@ segment_fingerprint = sha1(canonical_json({
 | # | node_id | 输出 | 关键输入（required / optional） |
 |---|---|---|---|
 | 1 | `DirectorDeck_ModelLoader` | BUNDLE | fl2va/ref2va/TE/video_vae/audio_vae（COMBO）、lora_1..9、strength_1..9、vram_tier |
-| 2 | `DirectorDeck_DirectorConfig` | CONFIG | width/height/aspect_ratio/segment_seconds/handoff_frames/sampler/sigmas/interpolate/denoise/seed_strategy/seed_base/preview/vram_policy/output_dir |
+| 2 | `DirectorDeck_DirectorConfig` | CONFIG | width/height/aspect_ratio/segment_seconds/handoff_frames/sampler/sigmas/interpolate/denoise/seed_strategy/seed_base/preview/vram_policy/output_dir/seam_enabled/seam_window/seam_max_add/seam_gain_limit |
 | 3 | `DirectorDeck_AssetShelf` | ASSETS | slots 1..9（IMAGE 可选）、audio_1..3（AUDIO 可选）、@引用说明 |
 | 4 | `DirectorDeck_ScriptDesk` | SCRIPT | text、mode、default_seconds、max_segments、keep_header |
 | 5 | `DirectorDeck_SegmentBrief` | BRIEF | text、seconds、dialogue（多行）、refs |

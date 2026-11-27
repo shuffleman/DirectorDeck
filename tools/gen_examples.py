@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 import os
 import sys
@@ -217,11 +218,24 @@ def m2_chain() -> dict:
     return graph
 
 
+def m2_reroll() -> dict:
+    """M2 抽卡示例：只换第 2 段的 seed（其余不动），验证“前段复用、只重抽一段”。
+
+    ComfyUI 会按 IS_CHANGED 缓存上游：第 1 段节点没变 -> 直接复用；
+    第 2 段种子变了 -> 重跑；第 3 段依赖第 2 段的尾帧 -> 跟着重跑。
+    """
+    graph = copy.deepcopy(m2_chain())
+    graph["11"]["inputs"]["seed"] = 88888
+    graph["22"]["inputs"]["filename_prefix"] = "DirectorDeck/M2_reroll_seg2"
+    return graph
+
+
 def main() -> int:
     os.makedirs(EXAMPLE_DIR, exist_ok=True)
     for name, graph in (("m1_single_segment_api", single()),
                         ("m1_ref2va_api", ref2va()),
-                        ("m2_chain_api", m2_chain())):
+                        ("m2_chain_api", m2_chain()),
+                        ("m2_reroll_seg2_api", m2_reroll())):
         path = os.path.join(EXAMPLE_DIR, name + ".json")
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(graph, fh, ensure_ascii=False, indent=2)

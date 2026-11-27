@@ -10,9 +10,9 @@ ComfyUI 节点库：**AI 短剧导演台**。把“模型 + 素材 + 剧本 + �
 
 | 阶段 | 状态 | 内容 |
 |---|---|---|
-| **M0 骨架** | ✅ | 契约、包结构、core 纯函数（帧数学/policy/剧本/素材）、56 个单测、CI |
+| **M0 骨架** | ✅ | 契约、包结构、core 纯函数（帧数学/policy/剧本/素材）、单测、CI |
 | **M1 单段闭环** | ✅ | 模型加载器、全局配置、资产管理器、剧本加载器、段级剧本、视频生成器；真机出片 |
-| M2 多段+合并+抽卡 | ⬜ | FramePlanner / ContinuityGuide / SegmentCache / SeamFixer / FinalCut |
+| **M2 链式多段** | ✅ | 帧计划器、尾帧/尾音引导续写、接缝曝光修正、多段合并、抽卡缓存；3 段 16.5s 真机出片 |
 | M3 锁音+二采 | ⬜ | VoiceLock（真锁音）/ Refiner |
 | M4 前端体验 | ⬜ | 素材画布 / 剧本编辑器 / 添加下一段 / 抽卡按钮 |
 | M5 发布 | ⬜ | 文档、示例工作流、Comfy Registry |
@@ -24,16 +24,20 @@ ComfyUI 节点库：**AI 短剧导演台**。把“模型 + 素材 + 剧本 + �
 3. **素材按 `@图片N` 槽位覆盖**：固定 9 槽，`merge` 按槽位替换，其余继承。
 4. **段级 config 只允许安全子集；模型仅链首提供**（禁止“半条链两个模型”）。
 
-## 节点（M1）
+## 节点（M2）
 
 | 节点 | 作用 |
 |---|---|
 | `DirectorDeck_ModelLoader` | 主干 + 文本编码器 + 视频/音频 VAE + 最多 4 个 LoRA + flow shift |
-| `DirectorDeck_DirectorConfig` | 画布/段时长/衔接帧/采样/种子/预览/显存策略 |
+| `DirectorDeck_DirectorConfig` | 画布/段时长/衔接帧/采样/种子/预览/显存策略 + 接缝参数 |
 | `DirectorDeck_AssetShelf` | 最多 9 张参考图，槽位固定（@图片N） |
 | `DirectorDeck_ScriptDesk` | 剧本 → 结构化段落（时长/对白/素材引用） |
 | `DirectorDeck_SegmentBrief` | 段级剧本覆盖（接到生成器 brief 输入） |
-| `DirectorDeck_DirectorTake` | 按段生成：策略解析 → 条件 → 采样 → 解码（输出 segment/images/audio） |
+| `DirectorDeck_FramePlanner` | 整条链的 17k+5 帧计划（head/delivery/sample/时间轴） |
+| `DirectorDeck_DirectorTake` | 按段生成；接 `previous_segment` 即自动尾帧+尾音引导、接缝修正 |
+| `DirectorDeck_SeamFixer` | 独立接缝修正（也可单独修已有两段） |
+| `DirectorDeck_FinalCut` | 多段合并：自动裁衔接头、拼音轨、写 manifest |
+| `DirectorDeck_SegmentCache` | 抽卡记录（status/store/clear，只存元数据） |
 
 ## 安装 / 开发
 

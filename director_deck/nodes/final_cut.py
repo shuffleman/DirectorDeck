@@ -11,6 +11,11 @@
 
 from __future__ import annotations
 
+import json
+import os
+import time
+
+import folder_paths
 import torch
 
 from ..core.types import CATEGORY, FPS, TYPE_MANIFEST, TYPE_SEGMENT
@@ -39,6 +44,9 @@ class DirectorDeckFinalCut:
             optional[f"segment_{index}"] = (TYPE_SEGMENT, {"tooltip": f"第 {index} 段元数据"})
             optional[f"images_{index}"] = ("IMAGE", {"tooltip": f"第 {index} 段画面"})
             optional[f"audio_{index}"] = ("AUDIO", {"tooltip": f"第 {index} 段音轨"})
+        # 清单落盘开关：想留档就开，只想快速看片就关。
+        optional["save_manifest"] = ("BOOLEAN", {"default": True,
+                                                 "tooltip": "把合并清单写到 output/DirectorDeck/manifests/"})
         return {"required": required, "optional": optional}
 
     @staticmethod
@@ -51,7 +59,7 @@ class DirectorDeckFinalCut:
             waveform = waveform[..., start:]
         return {"waveform": waveform, "sample_rate": sample_rate}
 
-    def merge(self, segment_1, images_1, audio_1, **kwargs):
+    def merge(self, segment_1, images_1, audio_1, save_manifest=True, **kwargs):
         pieces_images = []
         pieces_audio = []
         metas = []
@@ -99,4 +107,16 @@ class DirectorDeckFinalCut:
             "duration": round(float(images.shape[0]) / FPS, 3),
             "fps": FPS,
         }
+        # 清单落盘：这是“可复现/可追溯”的关键，二采和发布都要用。
+        if save_manifest:
+            try:
+                out_root = os.path.join(folder_paths.get_output_directory(),
+                                        "DirectorDeck", "manifests")
+                os.makedirs(out_root, exist_ok=True)
+                path = os.path.join(out_root, f"manifest_{time.strftime('%Y%m%d_%H%M%S')}.json")
+                with open(path, "w", encoding="utf-8") as fh:
+                    json.dump(manifest, fh, ensure_ascii=False, indent=2)
+                manifest["path"] = path
+            except Exception as exc:  # 落盘失败不影响成片
+                print(f"[DirectorDeck] 清单落盘失败：{exc}")
         return (images, audio, manifest)

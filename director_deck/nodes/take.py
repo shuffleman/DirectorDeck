@@ -313,6 +313,19 @@ class DirectorDeckTake:
             "seam": seam_info,
         }
         ui = self._preview_ui(images) if config.get("preview", True) else {}
+        # 把段元数据落盘一份（不含张量），方便抽卡/排错/回放；写失败不影响出图。
+        try:
+            output_root = os.path.join(folder_paths.get_output_directory(),
+                                       config.get("output_dir", "DirectorDeck"),
+                                       "segments")
+            os.makedirs(output_root, exist_ok=True)
+            meta_path = os.path.join(output_root, f"seg_{int(segment_index):02d}_{store_key}.json")
+            with open(meta_path, "w", encoding="utf-8") as fh:
+                json.dump(result, fh, ensure_ascii=False, indent=2)
+            result["meta_path"] = meta_path
+        except Exception as exc:  # 元数据写不进去不影响出片
+            print(f"[DirectorDeck] 段元数据落盘失败：{exc}")
+
         print(f"[DirectorDeck] 第 {segment_index} 段完成：{result['frames']} 帧，"
               f"{elapsed:.1f}s，seed={actual_seed}，guide={guide_info['used']}，"
               f"seam={seam_info and seam_info.get('apply')}")
