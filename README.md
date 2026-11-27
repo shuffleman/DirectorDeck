@@ -16,6 +16,8 @@ ComfyUI 节点库：**AI 短剧导演台**。把「模型 + 素材 + 剧本 + �
   段边界交叉淡化、跨段增益/限幅连续性。
 - **抽卡缓存**：画面级 mp4 + 音轨/latent npz 磁盘缓存，命中即跳过采样；TTS 音频内容参与指纹。
 - **本地 TTS**：可接 ComfyUI-Breeze-TTS-2；台词表节点一键多角色配音并直接输出可锁音的 CAST。
+- **编剧台（Skill）**：加载 `skills/` 里的规则包，把小说/梗概交给本地或远程 LLM 写成剧本，
+  自动对齐素材库图片槽和角色/音色库，输出可直连生成器的剧本与 TTS 台词表。
 - **导演台面板**：加下一段、加覆盖、重抽、看段清单、切换混音/调 duck 电平。
 
 ## 节点
@@ -34,6 +36,7 @@ ComfyUI 节点库：**AI 短剧导演台**。把「模型 + 素材 + 剧本 + �
 | `DirectorDeck_SegmentCache` | 抽卡记录（status/store/clear，只存元数据） |
 | `DirectorDeck_VoiceLock` | 数字人锁音器：角色→音频槽+时间轴起点（+增益/优先级）；多角色 ducking / 混音 |
 | `DirectorDeck_TTSBooth` | TTS 台词表：一张台词表 → 多角色配音 + 可锁音 CAST（可选依赖 Breeze-TTS-2） |
+| `DirectorDeck_ScriptSmith` | 编剧台：加载 skill + 小说 → 本地/远程 LLM 写剧本 → 可生成剧本 + TTS 台词表 |
 | `DirectorDeck_Refiner` | 二采工具：低 denoise 再采样（音频锁定）或 lanczos 放大 |
 
 ## 快速开始
@@ -55,6 +58,7 @@ ComfyUI 节点库：**AI 短剧导演台**。把「模型 + 素材 + 剧本 + �
 | `DirectorDeck_M9_台词表配音.json` | 台词表一键多角色配音 → 锁音 |
 | `DirectorDeck_M10_台词自动排期.json` | 不写起始秒：按句自动分段 + 自动排期 → 锁音 |
 | `DirectorDeck_M11_超长两段衔接.json` | 台词超长提醒 + 两段复用同一份 CAST 自动衔接 |
+| `DirectorDeck_M12_编剧台.json` | Skill + 小说 → 剧本/TTS → 锁音生成 |
 
 ## 使用说明
 
@@ -107,6 +111,24 @@ ComfyUI 节点库：**AI 短剧导演台**。把「模型 + 素材 + 剧本 + �
 
 右下角「DirectorDeck 导演台」：添加下一段、加素材/锁音/剧本覆盖、重抽选中段、查看段清单、
 切换混音模式、duck ±2dB（自动作用到选中生成器所连的锁音器）、中英双语。
+
+### 6. Skill 小说转剧本（编剧台）
+
+`DirectorDeck_ScriptSmith` 把小说/梗概变成可拍的剧本：
+
+1. **准备 skill**：把规则包放进 `skills/`（目录里放 `SKILL.md`，可选 `references/`），或用
+   `python tools/import_skill.py <路径>` 导入外部 skill（也支持单个 `.md` 提示词模板）。
+2. **选模型**：`provider` 选本地或远程（都走 OpenAI 兼容接口）：
+   - 本地：LM Studio `http://127.0.0.1:1234/v1`、Ollama `http://127.0.0.1:11434/v1`、vLLM 等；
+   - 远程：填 `base_url`（如 `https://api.deepseek.com/v1`）和模型名，Key 放环境变量
+     （`api_key_env` 填变量名，默认 `OPENAI_API_KEY`）。
+   - `model` 留空会自动取 `/models` 第一个；没有真实模型时可用 `python tools/mock_llm.py` 联调。
+3. **接素材**：可选把素材库（9 图槽）和角色/音色库接进来，模型只会用真实存在的
+   `@图片N`/角色名/音频槽；输出 `character_map` 可核对映射。
+4. **出结果**：`script` 接视频生成器的 `script`，`voice_lines` 接 TTS 台词表的 `lines`，
+   即可一键走「小说 → 剧本 → 配音 → 锁音生成」。
+5. **语言**：`language` 选中文/English/日本語/한국어/跟随原文；`output_format` 可选
+   DirectorDeck 剧本或 H3 V6 分段提示词。
 
 ## 文档
 

@@ -15,6 +15,7 @@ from .loader import DirectorDeckModelLoader
 from .planner import DirectorDeckFramePlanner
 from .refiner import DirectorDeckRefiner
 from .script_node import DirectorDeckScriptDesk
+from .script_smith import DirectorDeckScriptSmith
 from .seam_fixer import DirectorDeckSeamFixer
 from .shelf import DirectorDeckAssetShelf
 from .take import DirectorDeckTake
@@ -34,6 +35,7 @@ NODE_CLASS_MAPPINGS = {
     "DirectorDeck_SegmentCache": DirectorDeckSegmentCache,
     "DirectorDeck_VoiceLock": DirectorDeckVoiceLock,
     "DirectorDeck_TTSBooth": DirectorDeckTTSBooth,
+    "DirectorDeck_ScriptSmith": DirectorDeckScriptSmith,
     "DirectorDeck_Refiner": DirectorDeckRefiner,
 }
 
@@ -50,6 +52,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "DirectorDeck_SegmentCache": "DirectorDeck · 抽卡缓存",
     "DirectorDeck_VoiceLock": "DirectorDeck · 数字人锁音器",
     "DirectorDeck_TTSBooth": "DirectorDeck · TTS 台词表（多角色配音）",
+    "DirectorDeck_ScriptSmith": "DirectorDeck · 编剧台（Skill 小说转剧本）",
     "DirectorDeck_Refiner": "DirectorDeck · 二采工具",
 }
 

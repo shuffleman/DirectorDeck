@@ -41,6 +41,22 @@ TTS 输出 24kHz 单声道，锁音器会自动重采样到 32kHz。
 写 `角色 @起始秒 | 音色描述 | 台词` 多行，节点自动逐条调 Breeze-TTS-2 并输出可锁音的 CAST。
 示例：`examples/m9_tts_booth_api.json`、画布 `examples/ui/DirectorDeck_M9_台词表配音.json`。
 
+### 可选：LLM（编剧台 ScriptSmith）
+
+「编剧台」用 OpenAI 兼容接口写剧本，本地/远程都行，不需要额外装节点包：
+
+| 方式 | base_url 示例 | 说明 |
+|---|---|---|
+| LM Studio | `http://127.0.0.1:1234/v1` | 本地加载模型后开启 server |
+| Ollama | `http://127.0.0.1:11434/v1` | 需 `ollama serve` 且模型已 pull |
+| vLLM / 其它 | `http://127.0.0.1:8000/v1` | 任何 OpenAI 兼容服务 |
+| 远程 API | `https://api.openai.com/v1` / `https://api.deepseek.com/v1` | Key 放环境变量，节点里只填变量名 |
+
+- `model` 留空会自动取 `/models` 的第一个；
+- API Key 不写进工作流：设置环境变量（默认 `OPENAI_API_KEY`），节点填变量名即可；
+- 没有真实模型时可先跑 `python tools/mock_llm.py --port 18081` 联调（返回固定剧本）；
+- skill 放 `skills/` 或 `python tools/import_skill.py <路径>` 导入。
+
 ## 2. 安装（三选一）
 
 ### A. 开发模式（推荐，改代码立即生效，重启 ComfyUI 后加载）

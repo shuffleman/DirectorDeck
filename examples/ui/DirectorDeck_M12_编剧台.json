@@ -1,0 +1,2025 @@
+{
+  "id": "80c620fb-3091-4205-8b87-a7445d480ae3",
+  "revision": 0,
+  "last_node_id": 50,
+  "last_link_id": 17,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "DirectorDeck_ModelLoader",
+      "pos": [
+        0,
+        0
+      ],
+      "size": [
+        360,
+        620
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "title": "① 模型加载器（链首唯一）",
+      "inputs": [
+        {
+          "localized_name": "fl2va_model",
+          "name": "fl2va_model",
+          "type": "COMBO",
+          "widget": {
+            "name": "fl2va_model"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "text_encoder",
+          "name": "text_encoder",
+          "type": "COMBO",
+          "widget": {
+            "name": "text_encoder"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "video_vae",
+          "name": "video_vae",
+          "type": "COMBO",
+          "widget": {
+            "name": "video_vae"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "audio_vae",
+          "name": "audio_vae",
+          "type": "COMBO",
+          "widget": {
+            "name": "audio_vae"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "weight_dtype",
+          "name": "weight_dtype",
+          "type": "COMBO",
+          "widget": {
+            "name": "weight_dtype"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "vram_tier",
+          "name": "vram_tier",
+          "type": "COMBO",
+          "widget": {
+            "name": "vram_tier"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "ref2va_model",
+          "name": "ref2va_model",
+          "type": "COMBO",
+          "widget": {
+            "name": "ref2va_model"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "lora_1",
+          "name": "lora_1",
+          "type": "COMBO",
+          "widget": {
+            "name": "lora_1"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "strength_1",
+          "name": "strength_1",
+          "type": "FLOAT",
+          "widget": {
+            "name": "strength_1"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "lora_2",
+          "name": "lora_2",
+          "type": "COMBO",
+          "widget": {
+            "name": "lora_2"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "strength_2",
+          "name": "strength_2",
+          "type": "FLOAT",
+          "widget": {
+            "name": "strength_2"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "lora_3",
+          "name": "lora_3",
+          "type": "COMBO",
+          "widget": {
+            "name": "lora_3"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "strength_3",
+          "name": "strength_3",
+          "type": "FLOAT",
+          "widget": {
+            "name": "strength_3"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "lora_4",
+          "name": "lora_4",
+          "type": "COMBO",
+          "widget": {
+            "name": "lora_4"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "strength_4",
+          "name": "strength_4",
+          "type": "FLOAT",
+          "widget": {
+            "name": "strength_4"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "shift_video",
+          "name": "shift_video",
+          "type": "FLOAT",
+          "widget": {
+            "name": "shift_video"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "shift_audio",
+          "name": "shift_audio",
+          "type": "FLOAT",
+          "widget": {
+            "name": "shift_audio"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "bundle",
+          "name": "bundle",
+          "type": "DIRECTOR_BUNDLE",
+          "slot_index": 0,
+          "links": [
+            6
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DirectorDeck_ModelLoader"
+      },
+      "widgets_values": [
+        "MiniMax\\fastvideo_fasth3_8step_v2_pruned_bf16.safetensors",
+        "qwen3vl_32b_heretic_minimax_h3_nvfp4.safetensors",
+        "minimax_h3_video_vae_int8_convrot.safetensors",
+        "minimax_h3_audio_vae_fp32.safetensors",
+        "default",
+        "auto",
+        "none",
+        "minimax\\pika_h3_flex_ref2va_v1_bf16.safetensors",
+        1.0,
+        "minimax\\dmad_minimax_h3_8step_full_critic_comfyui.safetensors",
+        0.5,
+        "minimax\\Motion_Repair运动连续性.safetensors",
+        0.3,
+        "none",
+        1.0,
+        12.0,
+        3.0
+      ]
+    },
+    {
+      "id": 2,
+      "type": "DirectorDeck_DirectorConfig",
+      "pos": [
+        0,
+        660
+      ],
+      "size": [
+        360,
+        560
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "title": "② 全局配置",
+      "inputs": [
+        {
+          "localized_name": "width",
+          "name": "width",
+          "type": "INT",
+          "widget": {
+            "name": "width"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "height",
+          "name": "height",
+          "type": "INT",
+          "widget": {
+            "name": "height"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "segment_seconds",
+          "name": "segment_seconds",
+          "type": "FLOAT",
+          "widget": {
+            "name": "segment_seconds"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "handoff_frames",
+          "name": "handoff_frames",
+          "type": "INT",
+          "widget": {
+            "name": "handoff_frames"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "sampler_name",
+          "name": "sampler_name",
+          "type": "COMBO",
+          "widget": {
+            "name": "sampler_name"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "scheduler",
+          "name": "scheduler",
+          "type": "COMBO",
+          "widget": {
+            "name": "scheduler"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "steps",
+          "name": "steps",
+          "type": "INT",
+          "widget": {
+            "name": "steps"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "denoise",
+          "name": "denoise",
+          "type": "FLOAT",
+          "widget": {
+            "name": "denoise"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "sigmas_string",
+          "name": "sigmas_string",
+          "type": "STRING",
+          "widget": {
+            "name": "sigmas_string"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "interpolate_to_steps",
+          "name": "interpolate_to_steps",
+          "type": "INT",
+          "widget": {
+            "name": "interpolate_to_steps"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "seed_strategy",
+          "name": "seed_strategy",
+          "type": "COMBO",
+          "widget": {
+            "name": "seed_strategy"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "seed_base",
+          "name": "seed_base",
+          "type": "INT",
+          "widget": {
+            "name": "seed_base"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "preview",
+          "name": "preview",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "preview"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "vram_policy",
+          "name": "vram_policy",
+          "type": "COMBO",
+          "widget": {
+            "name": "vram_policy"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "cleanup_segments",
+          "name": "cleanup_segments",
+          "type": "COMBO",
+          "widget": {
+            "name": "cleanup_segments"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "seam_enabled",
+          "name": "seam_enabled",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "seam_enabled"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "seam_window",
+          "name": "seam_window",
+          "type": "INT",
+          "widget": {
+            "name": "seam_window"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "seam_max_add",
+          "name": "seam_max_add",
+          "type": "FLOAT",
+          "widget": {
+            "name": "seam_max_add"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "seam_gain_limit",
+          "name": "seam_gain_limit",
+          "type": "FLOAT",
+          "widget": {
+            "name": "seam_gain_limit"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "output_dir",
+          "name": "output_dir",
+          "type": "STRING",
+          "widget": {
+            "name": "output_dir"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "config",
+          "name": "config",
+          "type": "DIRECTOR_CONFIG",
+          "slot_index": 0,
+          "links": [
+            7
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DirectorDeck_DirectorConfig"
+      },
+      "widgets_values": [
+        640,
+        352,
+        5.0,
+        22,
+        "er_sde",
+        "beta",
+        10,
+        1.0,
+        "1.0, 0.972973, 0.923077, 0.8, 0.571429, 0.333333, 0.0",
+        10,
+        "per_segment",
+        12345,
+        true,
+        "release",
+        "ask",
+        true,
+        12,
+        0.1,
+        0.04,
+        "DirectorDeck"
+      ]
+    },
+    {
+      "id": 6,
+      "type": "LoadImage",
+      "pos": [
+        -20,
+        1120
+      ],
+      "size": [
+        320,
+        340
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "title": "参考图 1",
+      "inputs": [
+        {
+          "localized_name": "image",
+          "name": "image",
+          "type": "COMBO",
+          "widget": {
+            "name": "image"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "IMAGE",
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "slot_index": 0,
+          "links": [
+            1
+          ]
+        },
+        {
+          "localized_name": "MASK",
+          "name": "MASK",
+          "type": "MASK",
+          "slot_index": 1,
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "11.png"
+      ]
+    },
+    {
+      "id": 7,
+      "type": "LoadImage",
+      "pos": [
+        320,
+        1120
+      ],
+      "size": [
+        320,
+        340
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "title": "参考图 2",
+      "inputs": [
+        {
+          "localized_name": "image",
+          "name": "image",
+          "type": "COMBO",
+          "widget": {
+            "name": "image"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "IMAGE",
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "slot_index": 0,
+          "links": [
+            2
+          ]
+        },
+        {
+          "localized_name": "MASK",
+          "name": "MASK",
+          "type": "MASK",
+          "slot_index": 1,
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "睡衣.png"
+      ]
+    },
+    {
+      "id": 8,
+      "type": "DirectorDeck_AssetShelf",
+      "pos": [
+        -20,
+        1480
+      ],
+      "size": [
+        640,
+        300
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "title": "素材库（2 张参考图）",
+      "inputs": [
+        {
+          "localized_name": "image_1",
+          "name": "image_1",
+          "type": "IMAGE",
+          "link": 1
+        },
+        {
+          "localized_name": "image_2",
+          "name": "image_2",
+          "type": "IMAGE",
+          "link": 2
+        },
+        {
+          "localized_name": "image_3",
+          "name": "image_3",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "localized_name": "image_4",
+          "name": "image_4",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "localized_name": "image_5",
+          "name": "image_5",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "localized_name": "image_6",
+          "name": "image_6",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "localized_name": "image_7",
+          "name": "image_7",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "localized_name": "image_8",
+          "name": "image_8",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "localized_name": "image_9",
+          "name": "image_9",
+          "type": "IMAGE",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "assets",
+          "name": "assets",
+          "type": "DIRECTOR_ASSETS",
+          "slot_index": 0,
+          "links": [
+            3,
+            9
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DirectorDeck_AssetShelf"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 3,
+      "type": "DirectorDeck_ScriptSmith",
+      "pos": [
+        420,
+        0
+      ],
+      "size": [
+        460,
+        900
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "title": "编剧台（加载 skill，按素材库对齐角色）",
+      "inputs": [
+        {
+          "localized_name": "skill",
+          "name": "skill",
+          "type": "COMBO",
+          "widget": {
+            "name": "skill"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "skill_path",
+          "name": "skill_path",
+          "type": "STRING",
+          "widget": {
+            "name": "skill_path"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "novel",
+          "name": "novel",
+          "type": "STRING",
+          "widget": {
+            "name": "novel"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "language",
+          "name": "language",
+          "type": "COMBO",
+          "widget": {
+            "name": "language"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "output_format",
+          "name": "output_format",
+          "type": "COMBO",
+          "widget": {
+            "name": "output_format"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "segment_seconds",
+          "name": "segment_seconds",
+          "type": "FLOAT",
+          "widget": {
+            "name": "segment_seconds"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "max_segments",
+          "name": "max_segments",
+          "type": "INT",
+          "widget": {
+            "name": "max_segments"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "provider",
+          "name": "provider",
+          "type": "COMBO",
+          "widget": {
+            "name": "provider"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "base_url",
+          "name": "base_url",
+          "type": "STRING",
+          "widget": {
+            "name": "base_url"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "model",
+          "name": "model",
+          "type": "STRING",
+          "widget": {
+            "name": "model"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "api_key_env",
+          "name": "api_key_env",
+          "type": "STRING",
+          "widget": {
+            "name": "api_key_env"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "temperature",
+          "name": "temperature",
+          "type": "FLOAT",
+          "widget": {
+            "name": "temperature"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "max_tokens",
+          "name": "max_tokens",
+          "type": "INT",
+          "widget": {
+            "name": "max_tokens"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "timeout",
+          "name": "timeout",
+          "type": "INT",
+          "widget": {
+            "name": "timeout"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "include_refs",
+          "name": "include_refs",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "include_refs"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "max_context_chars",
+          "name": "max_context_chars",
+          "type": "INT",
+          "widget": {
+            "name": "max_context_chars"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "assets",
+          "name": "assets",
+          "type": "DIRECTOR_ASSETS",
+          "link": 3
+        },
+        {
+          "localized_name": "cast",
+          "name": "cast",
+          "type": "DIRECTOR_CAST",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "script",
+          "name": "script",
+          "type": "DIRECTOR_SCRIPT",
+          "slot_index": 0,
+          "links": [
+            8
+          ]
+        },
+        {
+          "localized_name": "script_text",
+          "name": "script_text",
+          "type": "STRING",
+          "slot_index": 1,
+          "links": []
+        },
+        {
+          "localized_name": "voice_lines",
+          "name": "voice_lines",
+          "type": "STRING",
+          "slot_index": 2,
+          "links": [
+            5
+          ]
+        },
+        {
+          "localized_name": "character_map",
+          "name": "character_map",
+          "type": "STRING",
+          "slot_index": 3,
+          "links": []
+        },
+        {
+          "localized_name": "summary",
+          "name": "summary",
+          "type": "STRING",
+          "slot_index": 4,
+          "links": []
+        },
+        {
+          "localized_name": "raw_text",
+          "name": "raw_text",
+          "type": "STRING",
+          "slot_index": 5,
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DirectorDeck_ScriptSmith"
+      },
+      "widgets_values": [
+        "directordeck_screenwriter",
+        "",
+        "雨夜，林澈撑着伞回到老宅门口。门内走出一个男人，是十年前失踪的哥哥。哥哥只说了一句：你终于回来了。",
+        "中文",
+        "DirectorDeck 剧本",
+        5.0,
+        1,
+        "本地 OpenAI 兼容 (LM Studio/Ollama)",
+        "http://127.0.0.1:18081/v1",
+        "mock-screenwriter",
+        "OPENAI_API_KEY",
+        0.7,
+        4096,
+        180,
+        false,
+        60000
+      ]
+    },
+    {
+      "id": 4,
+      "type": "BreezeTTS2LoadModel",
+      "pos": [
+        420,
+        940
+      ],
+      "size": [
+        400,
+        240
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "title": "Breeze TTS 2",
+      "inputs": [
+        {
+          "localized_name": "model",
+          "name": "model",
+          "type": "COMBO",
+          "widget": {
+            "name": "model"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "dtype",
+          "name": "dtype",
+          "type": "COMBO",
+          "widget": {
+            "name": "dtype"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "device",
+          "name": "device",
+          "type": "COMBO",
+          "widget": {
+            "name": "device"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "attention",
+          "name": "attention",
+          "type": "COMBO",
+          "widget": {
+            "name": "attention"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "decode_mode",
+          "name": "decode_mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "decode_mode"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "download_if_missing",
+          "name": "download_if_missing",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "download_if_missing"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "breeze_model",
+          "name": "breeze_model",
+          "type": "BREEZE_TTS2_MODEL",
+          "slot_index": 0,
+          "links": [
+            4
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "BreezeTTS2LoadModel"
+      },
+      "widgets_values": [
+        "int8 hybrid (recommended)",
+        "auto",
+        "auto",
+        "auto",
+        "eager",
+        false
+      ]
+    },
+    {
+      "id": 5,
+      "type": "DirectorDeck_TTSBooth",
+      "pos": [
+        880,
+        0
+      ],
+      "size": [
+        440,
+        860
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "title": "TTS 台词表（lines 来自编剧台）",
+      "inputs": [
+        {
+          "localized_name": "breeze_model",
+          "name": "breeze_model",
+          "type": "BREEZE_TTS2_MODEL",
+          "link": 4
+        },
+        {
+          "localized_name": "lines",
+          "name": "lines",
+          "type": "STRING",
+          "widget": {
+            "name": "lines"
+          },
+          "link": 5
+        },
+        {
+          "localized_name": "auto_start",
+          "name": "auto_start",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "auto_start"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "auto_split",
+          "name": "auto_split",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "auto_split"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "pause_ms",
+          "name": "pause_ms",
+          "type": "INT",
+          "widget": {
+            "name": "pause_ms"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "chars_per_second",
+          "name": "chars_per_second",
+          "type": "FLOAT",
+          "widget": {
+            "name": "chars_per_second"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "max_seconds",
+          "name": "max_seconds",
+          "type": "FLOAT",
+          "widget": {
+            "name": "max_seconds"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "mix_mode",
+          "name": "mix_mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "mix_mode"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "duck_db",
+          "name": "duck_db",
+          "type": "FLOAT",
+          "widget": {
+            "name": "duck_db"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "attack_ms",
+          "name": "attack_ms",
+          "type": "INT",
+          "widget": {
+            "name": "attack_ms"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "release_ms",
+          "name": "release_ms",
+          "type": "INT",
+          "widget": {
+            "name": "release_ms"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "cfg_scale",
+          "name": "cfg_scale",
+          "type": "FLOAT",
+          "widget": {
+            "name": "cfg_scale"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "max_new_tokens",
+          "name": "max_new_tokens",
+          "type": "INT",
+          "widget": {
+            "name": "max_new_tokens"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "temperature",
+          "name": "temperature",
+          "type": "FLOAT",
+          "widget": {
+            "name": "temperature"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "top_k",
+          "name": "top_k",
+          "type": "INT",
+          "widget": {
+            "name": "top_k"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "top_p",
+          "name": "top_p",
+          "type": "FLOAT",
+          "widget": {
+            "name": "top_p"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "repetition_penalty",
+          "name": "repetition_penalty",
+          "type": "FLOAT",
+          "widget": {
+            "name": "repetition_penalty"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "depth_temperature",
+          "name": "depth_temperature",
+          "type": "FLOAT",
+          "widget": {
+            "name": "depth_temperature"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "depth_top_k",
+          "name": "depth_top_k",
+          "type": "INT",
+          "widget": {
+            "name": "depth_top_k"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "depth_top_p",
+          "name": "depth_top_p",
+          "type": "FLOAT",
+          "widget": {
+            "name": "depth_top_p"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "seed",
+          "name": "seed",
+          "type": "INT",
+          "widget": {
+            "name": "seed"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "cast",
+          "name": "cast",
+          "type": "DIRECTOR_CAST",
+          "slot_index": 0,
+          "links": [
+            10
+          ]
+        },
+        {
+          "localized_name": "audio_1",
+          "name": "audio_1",
+          "type": "AUDIO",
+          "slot_index": 1,
+          "links": []
+        },
+        {
+          "localized_name": "audio_2",
+          "name": "audio_2",
+          "type": "AUDIO",
+          "slot_index": 2,
+          "links": []
+        },
+        {
+          "localized_name": "audio_3",
+          "name": "audio_3",
+          "type": "AUDIO",
+          "slot_index": 3,
+          "links": []
+        },
+        {
+          "localized_name": "summary",
+          "name": "summary",
+          "type": "STRING",
+          "slot_index": 4,
+          "links": []
+        },
+        {
+          "localized_name": "total_seconds",
+          "name": "total_seconds",
+          "type": "FLOAT",
+          "slot_index": 5,
+          "links": []
+        },
+        {
+          "localized_name": "segment_count",
+          "name": "segment_count",
+          "type": "INT",
+          "slot_index": 6,
+          "links": []
+        },
+        {
+          "localized_name": "plan",
+          "name": "plan",
+          "type": "STRING",
+          "slot_index": 7,
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DirectorDeck_TTSBooth"
+      },
+      "widgets_values": [
+        "女主 | 一位年轻女性，声音清澈温柔，语速偏慢，情绪平静。 | 你好，我是这部剧的女主角。\n男主 | 一位年轻男性，声音低沉沉稳，语气干练。 | 收到，我去检查船桨，五分钟以后开拍。",
+        true,
+        true,
+        300,
+        4.5,
+        0.0,
+        "priority",
+        -8.0,
+        60,
+        200,
+        4.0,
+        1500,
+        0.9,
+        50,
+        1.0,
+        1.1,
+        0.9,
+        50,
+        1.0,
+        20261201
+      ]
+    },
+    {
+      "id": 10,
+      "type": "DirectorDeck_DirectorTake",
+      "pos": [
+        1360,
+        0
+      ],
+      "size": [
+        380,
+        520
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "bundle",
+          "name": "bundle",
+          "type": "DIRECTOR_BUNDLE",
+          "link": 6
+        },
+        {
+          "localized_name": "config",
+          "name": "config",
+          "type": "DIRECTOR_CONFIG",
+          "link": 7
+        },
+        {
+          "localized_name": "script",
+          "name": "script",
+          "type": "DIRECTOR_SCRIPT",
+          "link": 8
+        },
+        {
+          "localized_name": "segment_index",
+          "name": "segment_index",
+          "type": "INT",
+          "widget": {
+            "name": "segment_index"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "bundle_policy",
+          "name": "bundle_policy",
+          "type": "COMBO",
+          "widget": {
+            "name": "bundle_policy"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "config_policy",
+          "name": "config_policy",
+          "type": "COMBO",
+          "widget": {
+            "name": "config_policy"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "assets_policy",
+          "name": "assets_policy",
+          "type": "COMBO",
+          "widget": {
+            "name": "assets_policy"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "brief_policy",
+          "name": "brief_policy",
+          "type": "COMBO",
+          "widget": {
+            "name": "brief_policy"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "cast_policy",
+          "name": "cast_policy",
+          "type": "COMBO",
+          "widget": {
+            "name": "cast_policy"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "continuity",
+          "name": "continuity",
+          "type": "COMBO",
+          "widget": {
+            "name": "continuity"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "seed",
+          "name": "seed",
+          "type": "INT",
+          "widget": {
+            "name": "seed"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "cache_mode",
+          "name": "cache_mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "cache_mode"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "assets",
+          "name": "assets",
+          "type": "DIRECTOR_ASSETS",
+          "link": 9
+        },
+        {
+          "localized_name": "brief",
+          "name": "brief",
+          "type": "DIRECTOR_BRIEF",
+          "link": null
+        },
+        {
+          "localized_name": "cast",
+          "name": "cast",
+          "type": "DIRECTOR_CAST",
+          "link": 10
+        },
+        {
+          "localized_name": "previous_segment",
+          "name": "previous_segment",
+          "type": "DIRECTOR_SEGMENT",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "segment",
+          "name": "segment",
+          "type": "DIRECTOR_SEGMENT",
+          "slot_index": 0,
+          "links": [
+            11
+          ]
+        },
+        {
+          "localized_name": "images",
+          "name": "images",
+          "type": "IMAGE",
+          "slot_index": 1,
+          "links": [
+            12
+          ]
+        },
+        {
+          "localized_name": "audio",
+          "name": "audio",
+          "type": "AUDIO",
+          "slot_index": 2,
+          "links": [
+            13
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DirectorDeck_DirectorTake"
+      },
+      "widgets_values": [
+        1,
+        "provided",
+        "inherit",
+        "replace",
+        "inherit",
+        "replace",
+        "start",
+        0,
+        "auto"
+      ]
+    },
+    {
+      "id": 40,
+      "type": "DirectorDeck_FinalCut",
+      "pos": [
+        1780,
+        0
+      ],
+      "size": [
+        420,
+        460
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "segment_1",
+          "name": "segment_1",
+          "type": "DIRECTOR_SEGMENT",
+          "link": 11
+        },
+        {
+          "localized_name": "images_1",
+          "name": "images_1",
+          "type": "IMAGE",
+          "link": 12
+        },
+        {
+          "localized_name": "audio_1",
+          "name": "audio_1",
+          "type": "AUDIO",
+          "link": 13
+        },
+        {
+          "localized_name": "segment_2",
+          "name": "segment_2",
+          "type": "DIRECTOR_SEGMENT",
+          "link": null
+        },
+        {
+          "localized_name": "images_2",
+          "name": "images_2",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "localized_name": "audio_2",
+          "name": "audio_2",
+          "type": "AUDIO",
+          "link": null
+        },
+        {
+          "localized_name": "segment_3",
+          "name": "segment_3",
+          "type": "DIRECTOR_SEGMENT",
+          "link": null
+        },
+        {
+          "localized_name": "images_3",
+          "name": "images_3",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "localized_name": "audio_3",
+          "name": "audio_3",
+          "type": "AUDIO",
+          "link": null
+        },
+        {
+          "localized_name": "segment_4",
+          "name": "segment_4",
+          "type": "DIRECTOR_SEGMENT",
+          "link": null
+        },
+        {
+          "localized_name": "images_4",
+          "name": "images_4",
+          "type": "IMAGE",
+          "link": null
+        },
+        {
+          "localized_name": "audio_4",
+          "name": "audio_4",
+          "type": "AUDIO",
+          "link": null
+        },
+        {
+          "localized_name": "save_manifest",
+          "name": "save_manifest",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "save_manifest"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "audio_from_source",
+          "name": "audio_from_source",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "audio_from_source"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "audio_crossfade_ms",
+          "name": "audio_crossfade_ms",
+          "type": "INT",
+          "widget": {
+            "name": "audio_crossfade_ms"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "images",
+          "name": "images",
+          "type": "IMAGE",
+          "slot_index": 0,
+          "links": [
+            14
+          ]
+        },
+        {
+          "localized_name": "audio",
+          "name": "audio",
+          "type": "AUDIO",
+          "slot_index": 1,
+          "links": [
+            15,
+            17
+          ]
+        },
+        {
+          "localized_name": "manifest",
+          "name": "manifest",
+          "type": "DIRECTOR_MANIFEST",
+          "slot_index": 2,
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DirectorDeck_FinalCut"
+      },
+      "widgets_values": [
+        true,
+        true,
+        0
+      ]
+    },
+    {
+      "id": 41,
+      "type": "CreateVideo",
+      "pos": [
+        2220,
+        0
+      ],
+      "size": [
+        320,
+        200
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "images",
+          "name": "images",
+          "type": "IMAGE",
+          "link": 14
+        },
+        {
+          "localized_name": "fps",
+          "name": "fps",
+          "type": "FLOAT",
+          "widget": {
+            "name": "fps"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "audio",
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 15
+        },
+        {
+          "localized_name": "bit_depth",
+          "name": "bit_depth",
+          "type": "COMBO",
+          "widget": {
+            "name": "bit_depth"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "color_space",
+          "name": "color_space",
+          "type": "COMBO",
+          "widget": {
+            "name": "color_space"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "chroma_subsampling",
+          "name": "chroma_subsampling",
+          "type": "COMBO",
+          "widget": {
+            "name": "chroma_subsampling"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "codec",
+          "name": "codec",
+          "type": "COMBO",
+          "widget": {
+            "name": "codec"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "VIDEO",
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "slot_index": 0,
+          "links": [
+            16
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CreateVideo"
+      },
+      "widgets_values": [
+        24.0,
+        8,
+        "sRGB",
+        "auto",
+        "h264"
+      ]
+    },
+    {
+      "id": 42,
+      "type": "SaveVideo",
+      "pos": [
+        2220,
+        240
+      ],
+      "size": [
+        360,
+        200
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "video",
+          "name": "video",
+          "type": "VIDEO",
+          "link": 16
+        },
+        {
+          "localized_name": "filename_prefix",
+          "name": "filename_prefix",
+          "type": "STRING",
+          "widget": {
+            "name": "filename_prefix"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "format",
+          "name": "format",
+          "type": "COMFY_DYNAMICCOMBO_V3",
+          "widget": {
+            "name": "format"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "format.codec",
+          "name": "format.codec",
+          "type": "COMBO",
+          "widget": {
+            "name": "format.codec"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "codec",
+          "name": "codec",
+          "type": "COMFY_DYNAMICCOMBO_V3",
+          "widget": {
+            "name": "codec"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "video",
+          "name": "video",
+          "type": "VIDEO",
+          "slot_index": 0,
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SaveVideo"
+      },
+      "widgets_values": [
+        "DirectorDeck/M12_scriptsmith",
+        "auto",
+        "auto",
+        "auto"
+      ]
+    },
+    {
+      "id": 43,
+      "type": "SaveAudio",
+      "pos": [
+        2220,
+        480
+      ],
+      "size": [
+        360,
+        110
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "audio",
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 17
+        },
+        {
+          "localized_name": "filename_prefix",
+          "name": "filename_prefix",
+          "type": "STRING",
+          "widget": {
+            "name": "filename_prefix"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "audio",
+          "name": "audio",
+          "type": "AUDIO",
+          "slot_index": 0,
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SaveAudio"
+      },
+      "widgets_values": [
+        "DirectorDeck/M12_scriptsmith_mix"
+      ]
+    },
+    {
+      "id": 50,
+      "type": "Note",
+      "pos": [
+        880,
+        940
+      ],
+      "size": [
+        760,
+        320
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "【M12 编剧台】\nskill + 小说 -> 本地/远程 LLM -> 分段剧本。\nscript 接视频生成器；voice_lines 接 TTS 台词表；assets/cast 用来对齐角色和音色。\n示例默认连 tools/mock_llm.py（127.0.0.1:18081）方便没有真实模型时联调；\n换成 LM Studio/Ollama 或远程 API 只需改 base_url/model（Key 放环境变量）。"
+      ]
+    }
+  ],
+  "links": [
+    [
+      1,
+      6,
+      0,
+      8,
+      0,
+      "IMAGE"
+    ],
+    [
+      2,
+      7,
+      0,
+      8,
+      1,
+      "IMAGE"
+    ],
+    [
+      3,
+      8,
+      0,
+      3,
+      16,
+      "DIRECTOR_ASSETS"
+    ],
+    [
+      4,
+      4,
+      0,
+      5,
+      0,
+      "BREEZE_TTS2_MODEL"
+    ],
+    [
+      5,
+      3,
+      2,
+      5,
+      1,
+      "STRING"
+    ],
+    [
+      6,
+      1,
+      0,
+      10,
+      0,
+      "DIRECTOR_BUNDLE"
+    ],
+    [
+      7,
+      2,
+      0,
+      10,
+      1,
+      "DIRECTOR_CONFIG"
+    ],
+    [
+      8,
+      3,
+      0,
+      10,
+      2,
+      "DIRECTOR_SCRIPT"
+    ],
+    [
+      9,
+      8,
+      0,
+      10,
+      12,
+      "DIRECTOR_ASSETS"
+    ],
+    [
+      10,
+      5,
+      0,
+      10,
+      14,
+      "DIRECTOR_CAST"
+    ],
+    [
+      11,
+      10,
+      0,
+      40,
+      0,
+      "DIRECTOR_SEGMENT"
+    ],
+    [
+      12,
+      10,
+      1,
+      40,
+      1,
+      "IMAGE"
+    ],
+    [
+      13,
+      10,
+      2,
+      40,
+      2,
+      "AUDIO"
+    ],
+    [
+      14,
+      40,
+      0,
+      41,
+      0,
+      "IMAGE"
+    ],
+    [
+      15,
+      40,
+      1,
+      41,
+      2,
+      "AUDIO"
+    ],
+    [
+      16,
+      41,
+      0,
+      42,
+      0,
+      "VIDEO"
+    ],
+    [
+      17,
+      40,
+      1,
+      43,
+      0,
+      "AUDIO"
+    ]
+  ],
+  "groups": [
+    {
+      "title": "素材 / 模型 / 配置",
+      "bounding": [
+        -60,
+        -20,
+        700,
+        1820
+      ],
+      "color": "#3f789e",
+      "font_size": 22,
+      "flags": {}
+    },
+    {
+      "title": "编剧台（Skill 小说转剧本）",
+      "bounding": [
+        400,
+        -20,
+        500,
+        940
+      ],
+      "color": "#8A8",
+      "font_size": 22,
+      "flags": {}
+    },
+    {
+      "title": "TTS / 锁音 / 生成 / 输出",
+      "bounding": [
+        860,
+        -20,
+        1760,
+        1000
+      ],
+      "color": "#b58b2a",
+      "font_size": 22,
+      "flags": {}
+    }
+  ],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.75,
+      "offset": [
+        80,
+        80
+      ]
+    },
+    "frontendVersion": "1.59.6"
+  },
+  "version": 0.4
+}

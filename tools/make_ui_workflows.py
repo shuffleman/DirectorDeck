@@ -292,6 +292,9 @@ def ui_to_api(workflow: dict, oi: dict) -> dict:
             if ui_entry and ui_entry.get("link") is not None:
                 _lid, origin_id, origin_slot, _tid, _tslot, _typ = links[ui_entry["link"]]
                 inputs[name] = [str(origin_id), int(origin_slot)]
+                # 控件被“转成输入”后，widgets_values 里仍然占一个位置，
+                # 只是取值来自连线；这里必须跳过该位，否则后面的控件会整体错位。
+                widget_index += 1
                 continue
             if widget_index < len(values):
                 value = values[widget_index]
@@ -789,6 +792,89 @@ def make_m11_chain(oi):
     return build_ui(oi, nodes, groups, "DirectorDeck_M11_超长两段衔接")
 
 
+def make_m12_scriptsmith(oi):
+    """M12：Skill + 小说 -> 编剧台 -> 剧本/TTS -> 锁音生成。"""
+    novel = ("雨夜，林澈撑着伞回到老宅门口。门内走出一个男人，是十年前失踪的哥哥。"
+             "哥哥只说了一句：你终于回来了。")
+    nodes = [
+        loader_node(), config_node(),
+        dict(id=6, type="LoadImage", pos=[-20, 1120], size=[320, 340],
+             values={"image": "11.png"}, title="参考图 1"),
+        dict(id=7, type="LoadImage", pos=[320, 1120], size=[320, 340],
+             values={"image": "睡衣.png"}, title="参考图 2"),
+        dict(id=8, type="DirectorDeck_AssetShelf", pos=[-20, 1480], size=[640, 300],
+             links_in={"image_1": (6, 0), "image_2": (7, 0)},
+             title="素材库（2 张参考图）"),
+        dict(id=3, type="DirectorDeck_ScriptSmith", pos=[420, 0], size=[460, 900],
+             values={"skill": "directordeck_screenwriter", "skill_path": "",
+                     "novel": novel, "language": "中文",
+                     "output_format": "DirectorDeck 剧本",
+                     "segment_seconds": 5.0, "max_segments": 1,
+                     "provider": "本地 OpenAI 兼容 (LM Studio/Ollama)",
+                     "base_url": "http://127.0.0.1:18081/v1",
+                     "model": "mock-screenwriter",
+                     "api_key_env": "OPENAI_API_KEY",
+                     "temperature": 0.7, "max_tokens": 4096, "timeout": 180,
+                     "include_refs": False, "max_context_chars": 60000},
+             links_in={"assets": (8, 0)},
+             title="编剧台（加载 skill，按素材库对齐角色）"),
+        dict(id=4, type="BreezeTTS2LoadModel", pos=[420, 940], size=[400, 240],
+             values={"model": "int8 hybrid (recommended)", "dtype": "auto",
+                     "device": "auto", "attention": "auto",
+                     "decode_mode": "eager", "download_if_missing": False},
+             title="Breeze TTS 2"),
+        dict(id=5, type="DirectorDeck_TTSBooth", pos=[880, 0], size=[440, 860],
+             values={"auto_start": True, "auto_split": True,
+                     "pause_ms": 300, "chars_per_second": 4.5, "max_seconds": 0.0,
+                     "mix_mode": "priority", "duck_db": -8.0,
+                     "attack_ms": 60, "release_ms": 200,
+                     "cfg_scale": 4.0, "max_new_tokens": 1500,
+                     "temperature": 0.9, "top_k": 50, "top_p": 1.0,
+                     "repetition_penalty": 1.1, "depth_temperature": 0.9,
+                     "depth_top_k": 50, "depth_top_p": 1.0,
+                     "seed": 20261201},
+             links_in={"breeze_model": (4, 0), "lines": (3, 2)},
+             title="TTS 台词表（lines 来自编剧台）"),
+        dict(id=10, type="DirectorDeck_DirectorTake", pos=[1360, 0], size=[380, 520],
+             values={"segment_index": 1, "bundle_policy": "provided",
+                     "config_policy": "inherit", "assets_policy": "replace",
+                     "brief_policy": "inherit", "cast_policy": "replace",
+                     "continuity": "start", "seed": 0, "cache_mode": "auto"},
+             links_in={"bundle": (1, 0), "config": (2, 0), "script": (3, 0),
+                       "assets": (8, 0), "cast": (5, 0)}),
+        dict(id=40, type="DirectorDeck_FinalCut", pos=[1780, 0], size=[420, 460],
+             values={"save_manifest": True, "audio_from_source": True,
+                     "audio_crossfade_ms": 0},
+             links_in={"segment_1": (10, 0), "images_1": (10, 1), "audio_1": (10, 2)}),
+        dict(id=41, type="CreateVideo", pos=[2220, 0], size=[320, 200],
+             values={"fps": 24.0, "bit_depth": 8, "color_space": "sRGB",
+                     "chroma_subsampling": "auto", "codec": "h264"},
+             links_in={"images": (40, 0), "audio": (40, 1)}),
+        dict(id=42, type="SaveVideo", pos=[2220, 240], size=[360, 200],
+             values={"filename_prefix": "DirectorDeck/M12_scriptsmith",
+                     "format": "auto", "format.codec": "auto", "codec": "auto"},
+             links_in={"video": (41, 0)}),
+        dict(id=43, type="SaveAudio", pos=[2220, 480], size=[360, 110],
+             values={"filename_prefix": "DirectorDeck/M12_scriptsmith_mix"},
+             links_in={"audio": (40, 1)}),
+        dict(id=50, type="Note", pos=[880, 940], size=[760, 320],
+             text="【M12 编剧台】\n"
+                  "skill + 小说 -> 本地/远程 LLM -> 分段剧本。\n"
+                  "script 接视频生成器；voice_lines 接 TTS 台词表；assets/cast 用来对齐角色和音色。\n"
+                  "示例默认连 tools/mock_llm.py（127.0.0.1:18081）方便没有真实模型时联调；\n"
+                  "换成 LM Studio/Ollama 或远程 API 只需改 base_url/model（Key 放环境变量）。"),
+    ]
+    groups = [
+        {"title": "素材 / 模型 / 配置", "bounding": [-60, -20, 700, 1820],
+         "color": "#3f789e", "font_size": 22, "flags": {}},
+        {"title": "编剧台（Skill 小说转剧本）", "bounding": [400, -20, 500, 940],
+         "color": "#8A8", "font_size": 22, "flags": {}},
+        {"title": "TTS / 锁音 / 生成 / 输出", "bounding": [860, -20, 1760, 1000],
+         "color": "#b58b2a", "font_size": 22, "flags": {}},
+    ]
+    return build_ui(oi, nodes, groups, "DirectorDeck_M12_编剧台")
+
+
 def make_m1(oi):
     nodes = [
         loader_node(), config_node(), script_node(),
@@ -1048,6 +1134,7 @@ WORKFLOWS = [
     ("m9_tts_booth_api", make_m9_booth),
     ("m10_tts_auto_api", make_m10_auto),
     ("m11_tts_chain_api", make_m11_chain),
+    ("m12_scriptsmith_api", make_m12_scriptsmith),
 ]
 
 

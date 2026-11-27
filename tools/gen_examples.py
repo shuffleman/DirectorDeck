@@ -683,6 +683,75 @@ def m11_tts_chain() -> dict:
     return graph
 
 
+def m12_scriptsmith() -> dict:
+    """M12 编剧台：skill + 小说 -> 剧本 -> TTS -> 锁音生成。
+
+    ScriptSmith 调本地 OpenAI 兼容模型（这里默认指向 tools/mock_llm.py 联调服务），
+    输出 script（接生成器）和 voice_lines（接 TTS 台词表）；素材库对齐 @图片1/2。
+    """
+    novel = (
+        "雨夜，林澈撑着伞回到老宅门口。门内走出一个男人，是十年前失踪的哥哥。"
+        "哥哥只说了一句：你终于回来了。"
+    )
+    graph = {
+        "1": loader_node(),
+        "2": config_node(),
+        "3": {"class_type": "DirectorDeck_ScriptSmith",
+              "inputs": {
+                  "skill": "directordeck_screenwriter", "skill_path": "",
+                  "novel": novel, "language": "中文",
+                  "output_format": "DirectorDeck 剧本",
+                  "segment_seconds": 5.0, "max_segments": 1,
+                  "provider": "本地 OpenAI 兼容 (LM Studio/Ollama)",
+                  "base_url": "http://127.0.0.1:18081/v1",
+                  "model": "mock-screenwriter",
+                  "api_key_env": "OPENAI_API_KEY",
+                  "temperature": 0.7, "max_tokens": 4096, "timeout": 180,
+                  "include_refs": False, "max_context_chars": 60000,
+                  "assets": ["8", 0]}},
+        "4": {"class_type": "BreezeTTS2LoadModel",
+              "inputs": {"model": "int8 hybrid (recommended)", "dtype": "auto",
+                         "device": "auto", "attention": "auto",
+                         "decode_mode": "eager", "download_if_missing": False}},
+        "5": {"class_type": "DirectorDeck_TTSBooth",
+              "inputs": {"breeze_model": ["4", 0], "lines": ["3", 2],
+                         "auto_start": True, "auto_split": True,
+                         "pause_ms": 300, "chars_per_second": 4.5,
+                         "max_seconds": 0.0, "mix_mode": "priority",
+                         "duck_db": -8.0, "attack_ms": 60, "release_ms": 200,
+                         "cfg_scale": 4.0, "max_new_tokens": 1500,
+                         "temperature": 0.9, "top_k": 50, "top_p": 1.0,
+                         "repetition_penalty": 1.1, "depth_temperature": 0.9,
+                         "depth_top_k": 50, "depth_top_p": 1.0,
+                         "seed": 20261201}},
+        "6": {"class_type": "LoadImage", "inputs": {"image": "11.png"}},
+        "7": {"class_type": "LoadImage", "inputs": {"image": "睡衣.png"}},
+        "8": {"class_type": "DirectorDeck_AssetShelf",
+              "inputs": {"image_1": ["6", 0], "image_2": ["7", 0]}},
+        "10": {"class_type": "DirectorDeck_DirectorTake",
+               "inputs": {"bundle": ["1", 0], "config": ["2", 0],
+                          "script": ["3", 0], "segment_index": 1,
+                          "bundle_policy": "provided", "config_policy": "inherit",
+                          "assets_policy": "replace", "brief_policy": "inherit",
+                          "cast_policy": "replace", "continuity": "start",
+                          "seed": 0, "cache_mode": "auto",
+                          "assets": ["8", 0], "cast": ["5", 0]}},
+        "40": {"class_type": "DirectorDeck_FinalCut",
+               "inputs": {"segment_1": ["10", 0], "images_1": ["10", 1],
+                          "audio_1": ["10", 2], "save_manifest": True,
+                          "audio_from_source": True, "audio_crossfade_ms": 0}},
+        "41": {"class_type": "CreateVideo",
+               "inputs": {"images": ["40", 0], "fps": 24.0, "audio": ["40", 1],
+                          "codec": "h264"}},
+        "42": {"class_type": "SaveVideo",
+               "inputs": {"video": ["41", 0], "filename_prefix": "DirectorDeck/M12_scriptsmith",
+                          "format": "auto", "codec": "auto"}},
+        "43": {"class_type": "SaveAudio",
+               "inputs": {"audio": ["40", 1], "filename_prefix": "DirectorDeck/M12_scriptsmith_mix"}},
+    }
+    return graph
+
+
 def main() -> int:
     os.makedirs(EXAMPLE_DIR, exist_ok=True)
     for name, graph in (("m1_single_segment_api", single()),
@@ -697,7 +766,8 @@ def main() -> int:
                         ("m8_tts_lock_api", m8_tts_lock()),
                         ("m9_tts_booth_api", m9_tts_booth()),
                         ("m10_tts_auto_api", m10_tts_auto()),
-                        ("m11_tts_chain_api", m11_tts_chain())):
+                        ("m11_tts_chain_api", m11_tts_chain()),
+                        ("m12_scriptsmith_api", m12_scriptsmith())):
         path = os.path.join(EXAMPLE_DIR, name + ".json")
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(graph, fh, ensure_ascii=False, indent=2)

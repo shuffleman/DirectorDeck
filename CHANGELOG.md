@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.6.0 — 编剧台：Skill + 小说 → 剧本 → TTS → 锁音（2026-11-28）
+
+### 新增
+- **`DirectorDeck_ScriptSmith`（编剧台）**：一个节点完成
+  「加载 skill → 读小说 → 调 LLM 写剧本 → 对齐素材/角色 → 出可生成的数据」：
+  - `skill` 下拉框读取 `skills/` 目录（支持目录式 SKILL.md + references，也支持单文件 .md 模板），
+    可用 `tools/import_skill.py` 导入外部 skill；
+  - 输入小说/梗概，可选接**素材库**（9 图槽）和**角色/音色库**，提示词里只允许模型使用真实存在的
+    `@图片N`、角色名和音频槽；
+  - **本地/远程 LLM 都走 OpenAI 兼容协议**：本地 LM Studio/Ollama/vLLM，远程 OpenAI/DeepSeek 等；
+    `base_url`/`model` 可填，model 留空自动取 `/models` 第一个；API Key 只从环境变量读；
+  - **输出语言**可选：中文 / English / 日本語 / 한국어 / 跟随原文；
+  - 输出 6 路：`script`（直接接视频生成器）、`script_text`（可读剧本，可直接粘剧本加载器）、
+    `voice_lines`（直接接 TTS 台词表）、`character_map`（角色→图片槽/音频槽/音色）、`summary`、`raw_text`；
+  - 支持两种输出格式：DirectorDeck 剧本（JSON，默认）/ H3 V6 分段提示词（自动转换回 DirectorDeck 剧本）。
+- 新增工具：`tools/import_skill.py`（导入 skill）、`tools/mock_llm.py`（OpenAI 兼容 mock，便于联调）。
+- 新增画布工作流 `DirectorDeck_M12_编剧台.json` 与 API 示例 `examples/m12_scriptsmith_api.json`。
+- 错误码：`DD-E060`（LLM 调用失败）/ `DD-E061`（剧本解析失败）/ `DD-E062`（skill 加载失败）。
+- 修复 UI 工作流生成器对“控件转输入”的取值错位（M12 的 voice_lines 直连 TTS 台词表）。
+
+### 验证（8189 真机，M12）
+- 用本地 mock LLM（`tools/mock_llm.py`）跑通：小说 → 编剧台 → 剧本/台词表 → TTS → 锁音 → H3。
+- 生成剧本 **? 段**、**? 句台词**；视频生成器收到的 prompt 包含 **?**（`@图片N` 正确绑定）。
+- 锁音 roles=**?**；成片 **? 帧 / ?s**。
+
 ## 0.5.0 — 台词超长提醒 + 多片段自动衔接（不缩句）（2026-11-28）
 
 ### 新增
