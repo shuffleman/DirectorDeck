@@ -73,6 +73,23 @@ class ExampleTest(unittest.TestCase):
         for key in ("segment_3", "images_3", "audio_3"):
             self.assertIn(key, cut["inputs"])
 
+    def test_m3_digital_human(self):
+        graph = load("m3_digital_human_api.json")
+        self._check(graph)
+        classes = {n["class_type"] for n in graph.values()}
+        for expected in ("LoadAudio", "DirectorDeck_VoiceLock",
+                         "DirectorDeck_DirectorTake", "DirectorDeck_Refiner",
+                         "CreateVideo", "SaveVideo"):
+            self.assertIn(expected, classes)
+        take = next(n for n in graph.values()
+                    if n["class_type"] == "DirectorDeck_DirectorTake")
+        self.assertIn("cast", take["inputs"])
+        self.assertEqual(take["inputs"]["cast_policy"], "replace")
+        refiner = next(n for n in graph.values()
+                       if n["class_type"] == "DirectorDeck_Refiner")
+        self.assertEqual(refiner["inputs"]["mode"], "latent_2nd")
+        self.assertLessEqual(float(refiner["inputs"]["denoise"]), 0.5)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -51,6 +51,23 @@ def _normalize_cast(data: Mapping[str, Any] | None) -> dict:
     return base
 
 
+def _serializable_cast(cast: Mapping[str, Any] | None) -> dict:
+    """给“要落盘/进 JSON”的场景用的 cast：把音频张量等运行期字段摘掉。
+
+    为什么要单独一个函数：真正的 cast 里带着 audio_data（张量），采样要用；
+    但 segment 元数据要写 history/磁盘，张量不能序列化，必须在这里降级。
+    """
+    data = _normalize_cast(cast)
+    roles = []
+    for role in data["roles"]:
+        # 只保留元数据字段；audio_data / waveform 之类一律不进 JSON。
+        item = {k: v for k, v in role.items()
+                if k in ("id", "name", "start", "voice")}
+        roles.append(item)
+    data["roles"] = roles
+    return data
+
+
 def merge_cast_by_character(base: Mapping[str, Any] | None,
                             override: Mapping[str, Any] | None) -> dict:
     """按“角色 id”合并音色：override 里点名的角色替换，其他角色保持 base。
@@ -116,7 +133,7 @@ class Resolution:
             "config": self.config,
             "assets": assets_meta,
             "brief": self.brief,
-            "cast": _normalize_cast(self.cast),
+            "cast": _serializable_cast(self.cast),
             "continuity": self.continuity,
             "guide": self.guide,
         }

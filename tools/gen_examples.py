@@ -230,12 +230,60 @@ def m2_reroll() -> dict:
     return graph
 
 
+def m3_digital_human() -> dict:
+    """M3 数字人锁音 + 二采示例。
+
+    链路：LoadAudio（一段 16.5s 音频）-> VoiceLock（女主: 槽1, 0.0s）
+          -> Take（真锁音生成 5s 段）-> 存一版 raw
+          -> Refiner（latent 二采 denoise=0.2 steps=4）-> 存一版 refined
+    """
+    graph = {
+        "1": loader_node(),
+        "2": config_node(),
+        "3": script_node(),
+        "5": {"class_type": "LoadAudio", "inputs": {"audio": "directordeck_voice.wav"}},
+        "6": {"class_type": "DirectorDeck_VoiceLock",
+              "inputs": {"roles": "女主: 1, 0.0", "lock_audio": True,
+                         "audio_1": ["5", 0]}},
+        "10": {"class_type": "DirectorDeck_DirectorTake",
+               "inputs": {
+                   "bundle": ["1", 0], "config": ["2", 0], "script": ["3", 0],
+                   "segment_index": 1, "bundle_policy": "provided",
+                   "config_policy": "inherit", "assets_policy": "clear",
+                   "brief_policy": "inherit", "cast_policy": "replace",
+                   "continuity": "start", "seed": 0, "cast": ["6", 0]}},
+        # 一采原片
+        "21": {"class_type": "CreateVideo",
+               "inputs": {"images": ["10", 1], "fps": 24.0, "audio": ["10", 2],
+                          "codec": "h264"}},
+        "22": {"class_type": "SaveVideo",
+               "inputs": {"video": ["21", 0], "filename_prefix": "DirectorDeck/M3_lock_raw",
+                          "format": "auto", "codec": "auto"}},
+        # 二采（低 denoise 再采样，音频锁定）
+        "20": {"class_type": "DirectorDeck_Refiner",
+               "inputs": {"bundle": ["1", 0], "segment": ["10", 0],
+                          "images": ["10", 1], "audio": ["10", 2],
+                          "mode": "latent_2nd", "denoise": 0.2, "steps": 4,
+                          "sampler_name": "er_sde", "scheduler": "beta",
+                          "upscale": 2.0}},
+        "31": {"class_type": "CreateVideo",
+               "inputs": {"images": ["20", 1], "fps": 24.0, "audio": ["20", 2],
+                          "codec": "h264"}},
+        "32": {"class_type": "SaveVideo",
+               "inputs": {"video": ["31", 0],
+                          "filename_prefix": "DirectorDeck/M3_lock_refined",
+                          "format": "auto", "codec": "auto"}},
+    }
+    return graph
+
+
 def main() -> int:
     os.makedirs(EXAMPLE_DIR, exist_ok=True)
     for name, graph in (("m1_single_segment_api", single()),
                         ("m1_ref2va_api", ref2va()),
                         ("m2_chain_api", m2_chain()),
-                        ("m2_reroll_seg2_api", m2_reroll())):
+                        ("m2_reroll_seg2_api", m2_reroll()),
+                        ("m3_digital_human_api", m3_digital_human())):
         path = os.path.join(EXAMPLE_DIR, name + ".json")
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(graph, fh, ensure_ascii=False, indent=2)

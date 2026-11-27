@@ -147,6 +147,10 @@
 
 - `voice.kind`：`audio`（真锁音，需自研节点）/ `tts`（M3 后）/ `none`（生成音频）。
 - `lock_audio=true` 时该角色音轨以 **noise_mask=0** 锁进 AV latent。
+- **运行期字段**：`roles[i].audio_data`（AUDIO 张量）只在进程内传递，写盘/进 JSON 时会由
+  `policy._serializable_cast()` 剔除；落盘的 cast 只有 `id/name/start/voice`。
+- 锁音保真的验收口径：用**包络相关 + 频带结构**，不用样点相关——H3 的音频 VAE 是
+  神经编解码器，解码会重建波形相位。
 
 ### 2.8 `DIRECTOR_PLAN`（schema 1）
 
@@ -312,13 +316,13 @@ segment_fingerprint = sha1(canonical_json({
 | 3 | `DirectorDeck_AssetShelf` | ASSETS | slots 1..9（IMAGE 可选）、audio_1..3（AUDIO 可选）、@引用说明 |
 | 4 | `DirectorDeck_ScriptDesk` | SCRIPT | text、mode、default_seconds、max_segments、keep_header |
 | 5 | `DirectorDeck_SegmentBrief` | BRIEF | text、seconds、dialogue（多行）、refs |
-| 6 | `DirectorDeck_VoiceLock` | CAST | roles（JSON/多行）、lock_audio、audio_1..3 |
+| 6 | `DirectorDeck_VoiceLock` | CAST + STRING | roles（多行“角色: 槽号, 起始秒”）、lock_audio、audio_1..3（可选 AUDIO） |
 | 7 | `DirectorDeck_FramePlanner` | PLAN + STRING | script、config、keep_full（可选） |
 | 8 | `DirectorDeck_ContinuityGuide` | CONDITIONING/IMAGE | **M2 已并入 DirectorTake**：`continuity=guide_tail` + `previous_segment` 即自动取尾帧/尾音做 AddGuide；独立节点等 M3 latent 续写再做 |
 | 9 | `DirectorDeck_DirectorTake` | SEGMENT + IMAGE + AUDIO | bundle_policy、bundle、config_policy、assets_policy、assets、brief_policy、brief、cast_policy、continuity、segment_index、seed + optional: previous_segment |
 | 10 | `DirectorDeck_SeamFixer` | IMAGE + STRING | prev_images、cur_images、cur_head + optional: enabled、window、max_add、gain_limit |
 | 11 | `DirectorDeck_SegmentCache` | SEGMENT + STRING | segment、mode(status/store/clear)、scope（可选） |
-| 12 | `DirectorDeck_Refiner`（M3） | SEGMENT | segment、mode(upscale/latent-2nd)、engine、denoise/steps、windows |
+| 12 | `DirectorDeck_Refiner` | SEGMENT + IMAGE + AUDIO | bundle、segment、images、audio + optional: mode(latent_2nd/lanczos2x)、denoise、steps、sampler_name、scheduler、upscale |
 | 13 | `DirectorDeck_FinalCut` | IMAGE + AUDIO + MANIFEST | segment_1/images_1/audio_1（必填）+ segment_2..4/images_2..4/audio_2..4（可选） |
 | 14 | `DirectorDeck_OutputLibrary`（可选） | path+FILE | segment/manifest、dir、naming |
 | 15 | `DirectorDeck_PromptSmith`（可选） | STRING | template/task、remote provider（默认关） |

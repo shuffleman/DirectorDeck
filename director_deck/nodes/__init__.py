@@ -13,10 +13,12 @@ from .config import DirectorDeckConfig
 from .final_cut import DirectorDeckFinalCut
 from .loader import DirectorDeckModelLoader
 from .planner import DirectorDeckFramePlanner
+from .refiner import DirectorDeckRefiner
 from .script_node import DirectorDeckScriptDesk
 from .seam_fixer import DirectorDeckSeamFixer
 from .shelf import DirectorDeckAssetShelf
 from .take import DirectorDeckTake
+from .voice_lock import DirectorDeckVoiceLock
 
 NODE_CLASS_MAPPINGS = {
     "DirectorDeck_ModelLoader": DirectorDeckModelLoader,
@@ -29,6 +31,8 @@ NODE_CLASS_MAPPINGS = {
     "DirectorDeck_SeamFixer": DirectorDeckSeamFixer,
     "DirectorDeck_FinalCut": DirectorDeckFinalCut,
     "DirectorDeck_SegmentCache": DirectorDeckSegmentCache,
+    "DirectorDeck_VoiceLock": DirectorDeckVoiceLock,
+    "DirectorDeck_Refiner": DirectorDeckRefiner,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -42,6 +46,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "DirectorDeck_SeamFixer": "DirectorDeck · 接缝修正器",
     "DirectorDeck_FinalCut": "DirectorDeck · 多段合并器",
     "DirectorDeck_SegmentCache": "DirectorDeck · 抽卡缓存",
+    "DirectorDeck_VoiceLock": "DirectorDeck · 数字人锁音器",
+    "DirectorDeck_Refiner": "DirectorDeck · 二采工具",
 }
 
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]

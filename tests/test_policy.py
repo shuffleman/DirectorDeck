@@ -206,12 +206,20 @@ class SerializableTest(unittest.TestCase):
         fake_bundle = {**defaults["bundle"], "bundle_id": "sha1:test",
                        "spec": {"fl2va_model": "m"}, "model": object(), "vae": object()}
         defaults["bundle"] = fake_bundle
+        # 锁音 cast 里带运行期音频张量（用 object 模拟不可序列化对象），
+        # canonical 必须把它摘掉，否则写 history 会炸。
+        defaults["cast"] = {"roles": [{"id": "girl", "name": "女主", "start": 0.0,
+                                       "voice": {"kind": "audio", "slot": 1},
+                                       "audio_data": object()}],
+                            "lock_audio": True}
         resolved = policy.resolve_segment(
             index=0, policies=full_policies(), sockets={"bundle": fake_bundle},
             defaults=defaults)
         text = json.dumps(resolved.canonical(), ensure_ascii=False)  # 不能抛 TypeError
         self.assertIn("sha1:test", text)
         self.assertIn("fl2va_model", text)
+        self.assertIn("girl", text)
+        self.assertNotIn("audio_data", text)
 
 
 class HashTest(unittest.TestCase):

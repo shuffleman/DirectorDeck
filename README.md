@@ -13,7 +13,7 @@ ComfyUI 节点库：**AI 短剧导演台**。把“模型 + 素材 + 剧本 + �
 | **M0 骨架** | ✅ | 契约、包结构、core 纯函数（帧数学/policy/剧本/素材）、单测、CI |
 | **M1 单段闭环** | ✅ | 模型加载器、全局配置、资产管理器、剧本加载器、段级剧本、视频生成器；真机出片 |
 | **M2 链式多段** | ✅ | 帧计划器、尾帧/尾音引导续写、接缝曝光修正、多段合并、抽卡缓存；3 段 16.5s 真机出片 |
-| M3 锁音+二采 | ⬜ | VoiceLock（真锁音）/ Refiner |
+| **M3 锁音+二采** | ✅ | 数字人锁音（逐流 noise_mask=0 真锁）、AV latent 拆合手术、二采（低 denoise 再采样）、音频 VAE 编解码；真机验证 |
 | M4 前端体验 | ⬜ | 素材画布 / 剧本编辑器 / 添加下一段 / 抽卡按钮 |
 | M5 发布 | ⬜ | 文档、示例工作流、Comfy Registry |
 
@@ -38,6 +38,8 @@ ComfyUI 节点库：**AI 短剧导演台**。把“模型 + 素材 + 剧本 + �
 | `DirectorDeck_SeamFixer` | 独立接缝修正（也可单独修已有两段） |
 | `DirectorDeck_FinalCut` | 多段合并：自动裁衔接头、拼音轨、写 manifest |
 | `DirectorDeck_SegmentCache` | 抽卡记录（status/store/clear，只存元数据） |
+| `DirectorDeck_VoiceLock` | 数字人锁音器：角色→音频槽+时间轴起点（真锁音） |
+| `DirectorDeck_Refiner` | 二采工具：低 denoise 再采样（音频锁定）或 lanczos 放大 |
 
 ## 安装 / 开发
 
@@ -77,6 +79,22 @@ python tools\run_example.py examples\m2_reroll_seg2_api.json --server http://127
 | 接缝修正 | `seam.apply=true, gain=0.96, offset≈0.027/0.030`，残余 0.0019/0.0006 |
 | 抽卡缓存 | 只改第 2 段 seed 重跑：`execution_cached=["1","2","3","10"]`（模型/配置/剧本/**第 1 段**复用），总耗时 695s→406s |
 | 落盘 | `output/DirectorDeck/segments/*.json`（每段元数据）、`output/DirectorDeck/manifests/*.json`（成片清单） |
+
+**M3 数字人锁音 + 二采（验证数据）**：
+
+```powershell
+python tools\run_example.py examples\m3_digital_human_api.json --server http://127.0.0.1:8189
+```
+
+| 指标 | 结果 |
+|---|---|
+| 锁音生效 | 段元数据 `lock.applied=true`，roles=女主，窗口 `[0, 5.167]s`，锁入 165333 采样点 |
+| 音轨内容保真 | 源音频 vs 锁音输出：**包络相关 0.9709**、频带结构一致（H3 的音频 VAE 是神经编解码器，重建波形相位会变，样点级相关不适合做指标） |
+| 二采效果 | 124 帧 → 124 帧；raw vs refined **平均像素差 5.7**（画面确有再生成） |
+| 二采保音 | raw vs refined **波形相关 0.9946**（二采不改音轨） |
+| 段元数据 | `lock`/`refine` 字段落盘，可追溯 |
+
+> 注：要做到“成片里音频与源文件逐样点一致”，应在最终合并时直接把源音频混流（M4 的 FinalCut 增加 `audio_from_source` 选项）；锁音目前保证的是**内容/口型对应**，不是无损封装。
 
 ## 目录
 

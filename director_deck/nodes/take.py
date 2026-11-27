@@ -21,14 +21,15 @@ from PIL import Image
 
 import folder_paths
 
-from ..adapters import h3
+from ..adapters import av_latent, h3
 from ..adapters import segment_store
 from ..core import assets as assets_lib
+from ..core import audio as audio_math
 from ..core import frames, policy, seam
 from ..core.types import (
     ASSETS_POLICIES, BRIEF_POLICIES, BUNDLE_POLICIES, CAST_POLICIES, CATEGORY,
     CONTINUITY_MODES, CONFIG_POLICIES, FPS, MAX_SEGMENTS, TYPE_ASSETS, TYPE_BRIEF,
-    TYPE_BUNDLE, TYPE_CONFIG, TYPE_SCRIPT, TYPE_SEGMENT, error,
+    TYPE_BUNDLE, TYPE_CAST, TYPE_CONFIG, TYPE_SCRIPT, TYPE_SEGMENT, error,
 )
 
 
@@ -49,6 +50,22 @@ def _slice_audio_tail(audio: dict, tail_frames: int) -> dict:
     waveform = audio["waveform"]
     start = max(0, waveform.shape[-1] - samples)
     return {"waveform": waveform[..., start:], "sample_rate": sample_rate}
+
+
+def _timeline_start(script: dict, index: int, handoff_frames: int, config: dict) -> float:
+    """算第 index 段（0 起）在整条时间轴上的起点（秒）。
+
+    为什么要算它：锁音是按“整条时间轴”对齐音频的，
+    不知道这一段从第几秒开始，就没法从台词音频里切对那一截。
+    """
+    total = 0.0
+    segments = list((script or {}).get("segments") or [])
+    default_seconds = float(config.get("segment_seconds", 5.0))
+    for i in range(max(0, index)):
+        seconds = (float(segments[i].get("seconds") or default_seconds)
+                   if i < len(segments) else default_seconds)
+        total += frames.segment_plan(i, seconds, handoff_frames).duration
+    return total
 
 
 class DirectorDeckTake:
@@ -84,19 +101,26 @@ class DirectorDeckTake:
             "optional": {
                 "assets": (TYPE_ASSETS, {"tooltip": "段级资产管理器（覆盖/合并）"}),
                 "brief": (TYPE_BRIEF, {"tooltip": "段级剧本片段（覆盖脚本段落）"}),
+                "cast": (TYPE_CAST, {"tooltip": "段级音色/锁音表（锁音生成时接 VoiceLock）"}),
                 "previous_segment": (TYPE_SEGMENT, {"tooltip": "上一段的 segment 输出（第 2 段起必接）"}),
             },
         }
 
     @classmethod
     def IS_CHANGED(cls, bundle=None, config=None, script=None, assets=None,
-                   brief=None, previous_segment=None, **kwargs):
+                   brief=None, cast=None, previous_segment=None, **kwargs):
         key = dict(kwargs)
         key["config"] = config
         key["script"] = script
         key["brief"] = brief
         key["asset_hash"] = assets_lib.assets_hash(assets) if assets else None
         key["bundle_id"] = (bundle or {}).get("bundle_id")
+        # cast 里有音频张量，不能直接序列化；用角色/起点/槽位做指纹即可。
+        key["cast_roles"] = [
+            (r.get("id"), r.get("start"), (r.get("voice") or {}).get("slot"))
+            for r in (cast or {}).get("roles") or []
+        ]
+        key["cast_lock"] = bool((cast or {}).get("lock_audio"))
         # 上一段的运行期 store_key 含种子信息，变了说明必须重跑。
         key["prev_store_key"] = (previous_segment or {}).get("store_key")
         return hashlib.sha1(json.dumps(key, sort_keys=True, ensure_ascii=False,
@@ -162,7 +186,7 @@ class DirectorDeckTake:
     # ------------------------------------------------------------------
     def generate(self, bundle, config, script, segment_index, bundle_policy,
                  config_policy, assets_policy, brief_policy, cast_policy,
-                 continuity, seed=0, assets=None, brief=None,
+                 continuity, seed=0, assets=None, brief=None, cast=None,
                  previous_segment=None):
         started = time.perf_counter()
         index = int(segment_index) - 1  # 内部用 0 起，方便帧数学
@@ -197,6 +221,8 @@ class DirectorDeckTake:
             sockets["assets"] = assets
         if brief is not None:
             sockets["brief"] = brief
+        if cast is not None:
+            sockets["cast"] = cast
         resolved = policy.resolve_segment(index=index, policies=policies,
                                           sockets=sockets, previous=previous_res,
                                           defaults=defaults)
@@ -215,7 +241,10 @@ class DirectorDeckTake:
         prompt = assets_lib.bind_prompt(text, resolved.assets)
 
         # 4) 帧计划：注意这里是“第 index 段”，不是永远第 1 段。
-        plan = frames.segment_plan(index, seconds, config.get("handoff_frames", 22))
+        timeline_start = _timeline_start(script, index,
+                                         config.get("handoff_frames", 22), config)
+        plan = frames.segment_plan(index, seconds, config.get("handoff_frames", 22),
+                                   previous_timeline=timeline_start)
         length = frames.validate_length(plan.sample)
         width, height = frames.validate_canvas(config["width"], config["height"])
 
@@ -225,6 +254,30 @@ class DirectorDeckTake:
         cond, latent = h3.build_conditioning(
             bundle, mode=mode, prompt=prompt, width=width, height=height,
             length=length, ref_images=ref_images)
+
+        # 5.5) 数字人锁音：把 cast 里的音轨按时间轴铺好，锁进音频流。
+        #      这是“真锁音”——不是 AddGuide 的条件锚定，而是 noise_mask=0。
+        lock_info = {"applied": False}
+        locked_audio_latent = None
+        if resolved.cast.get("lock_audio"):
+            roles_with_audio = [r for r in resolved.cast.get("roles") or []
+                                if r.get("audio_data")]
+            if roles_with_audio:
+                # 本段的“真实时间区间”：采样头是上一段尾巴，所以起点要往前挪。
+                seg_start, seg_end = audio_math.segment_span(
+                    plan.timeline_start, plan.head, plan.sample)
+                vae_rate = int(getattr(bundle["audio_vae"], "audio_sample_rate", 32000))
+                track = av_latent.build_audio_track(
+                    roles_with_audio, seg_start, seg_end, vae_rate)
+                if float(track.abs().max()) > 0:
+                    latent, locked_audio_latent = av_latent.lock_audio(
+                        latent, bundle["audio_vae"], track, vae_rate)
+                    lock_info = {
+                        "applied": True,
+                        "roles": [r.get("name") for r in roles_with_audio],
+                        "window": [round(seg_start, 3), round(seg_end, 3)],
+                        "samples": int(track.shape[-1]),
+                    }
 
         # 6) 续写引导：把上一段 delivery 的尾巴（head 帧）钉到本段第 0 帧，
         #    音轨也钉一段，这样画面和声音都能接上。
@@ -236,10 +289,16 @@ class DirectorDeckTake:
                             f"上一段可用的尾帧只有 {tail_images.shape[0]} 帧，"
                             f"不够衔接头 {plan.head} 帧")
             tail_images = tail_images[-plan.head:]
-            tail_audio = _slice_audio_tail(prev_snapshot["audio_full"], plan.head)
-            cond = h3.add_guide(bundle, cond, latent, image=tail_images,
-                                audio=tail_audio, frame_idx=0)
-            guide_info.update(used=True, audio=True)
+            if lock_info.get("applied"):
+                # 音频已经被锁死了，就别再拿上一段音频去引导，否则两套声音打架。
+                cond = h3.add_guide(bundle, cond, latent,
+                                    image=tail_images, frame_idx=0)
+                guide_info.update(used=True, audio=False)
+            else:
+                tail_audio = _slice_audio_tail(prev_snapshot["audio_full"], plan.head)
+                cond = h3.add_guide(bundle, cond, latent, image=tail_images,
+                                    audio=tail_audio, frame_idx=0)
+                guide_info.update(used=True, audio=True)
 
         # 7) 采样 + 解码。
         final_seed = self._resolve_seed(config, seed, int(segment_index))
@@ -252,6 +311,10 @@ class DirectorDeckTake:
             sigmas_string=(config.get("sigmas_string") or None),
             interpolate_to_steps=int(config.get("interpolate_to_steps", 0)),
         )
+        # 7.5) 锁音兜底恢复：确保采样后的音频流还是我们锁进去的那一版。
+        if locked_audio_latent is not None:
+            sampled = av_latent.restore_audio(sampled, locked_audio_latent)
+
         images = h3.decode_video(bundle, sampled)
         audio = h3.decode_audio(bundle, sampled)
         actual_seed = int(sampled.get("_director_seed", final_seed))
@@ -310,6 +373,7 @@ class DirectorDeckTake:
             "preview": bool(config.get("preview", True)),
             "store_key": store_key,
             "guide": guide_info,
+            "lock": lock_info,
             "seam": seam_info,
         }
         ui = self._preview_ui(images) if config.get("preview", True) else {}
@@ -328,5 +392,5 @@ class DirectorDeckTake:
 
         print(f"[DirectorDeck] 第 {segment_index} 段完成：{result['frames']} 帧，"
               f"{elapsed:.1f}s，seed={actual_seed}，guide={guide_info['used']}，"
-              f"seam={seam_info and seam_info.get('apply')}")
+              f"lock={lock_info.get('applied')}，seam={seam_info and seam_info.get('apply')}")
         return {"ui": ui, "result": (result, images, audio)}
