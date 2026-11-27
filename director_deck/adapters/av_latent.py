@@ -241,7 +241,14 @@ def build_audio_track(roles: list[dict], seg_start: float, seg_end: float,
         mixed = mixed + _apply_gain_envelope(track, envelope, frame_size)
 
     peak = float(mixed.abs().max()) if mixed.numel() else 0.0
-    limit = audio_math.apply_limiter(peak)
+    # 跨段电平一致：沿用上一段的限幅系数。
+    # 否则会出现“上一段因为 A+B 峰值高被压了 0.8，这一段只有 B 没超限就恢复 1.0”
+    # 的段边界音量跳变（M11 超长两段衔接实测 jump/step=4.56）。
+    previous_limit = float(previous.get("limiter", 1.0) or 1.0)
+    limit = max(1e-6, min(1.0, previous_limit))
+    peak_after = peak * limit
+    if peak_after > audio_math.LIMITER_CEILING:
+        limit *= audio_math.LIMITER_CEILING / peak_after
     if limit < 1.0:
         mixed = mixed * limit
 

@@ -323,7 +323,7 @@ segment_fingerprint = "sha1:" + sha1(canonical_json({
 - `json`：段结果元数据 + 画面尺寸（读回解码用）
 - `SegmentCache.mode`（生成器控件）：`auto`=命中复用、未命中生成并写；`off`=不读不写；`reroll`=无视命中、重新生成并覆盖。
 - **锁音内容哈希**：`lock.audio_hash` 由每路角色实际波形算出（0.2.5+）。TTS 每次生成可能不同，
-  只按角色名/时间轴缓存会错误复用旧声音；`cache_schema=2` 起必须带它。
+  只按角色名/时间轴缓存会错误复用旧声音；`cache_schema>=2` 必须带它。
 - 命中时跳过：条件构造、采样、VAE 解码；下游的续写/锁音/无损混流仍可用（运行期仓库会从缓存补齐）。
 - 载入失败/损坏/版本不符一律按“未命中”处理，不影响正常出片；写盘失败也不影响出片（错误码 `DD-E040` 仅用于显式 I/O 失败）。
 
@@ -355,7 +355,7 @@ segment_fingerprint = "sha1:" + sha1(canonical_json({
 | 14 | `DirectorDeck_OutputLibrary`（可选） | path+FILE | segment/manifest、dir、naming |
 | 15 | `DirectorDeck_PromptSmith`（可选） | STRING | template/task、remote provider（默认关） |
 | 16 | `DirectorDeck_DirectorRunner`（M4，可选） | ALL | plan/config、run_mode |
-| 17 | `DirectorDeck_TTSBooth`（0.4.0） | CAST + AUDIO×3 + STRING + FLOAT | breeze_model（BREEZE_TTS2_MODEL）、lines（`角色 [@起始秒] \| 音色描述 \| 台词`）、auto_start、auto_split、pause_ms、chars_per_second、mix_mode/duck_db/attack_ms/release_ms、Breeze 生成参数（cfg_scale/max_new_tokens/temperature/top_k/top_p/repetition_penalty/depth_*/seed）；输出第 6 路 total_seconds；**可选依赖 ComfyUI-Breeze-TTS-2**，缺包报 `DD-E050` |
+| 17 | `DirectorDeck_TTSBooth`（0.5.0） | CAST + AUDIO×3 + STRING + FLOAT + INT + STRING | breeze_model（BREEZE_TTS2_MODEL）、lines（`角色 [@起始秒] \| 音色描述 \| 台词`）、auto_start、auto_split、pause_ms、chars_per_second、max_seconds、mix_mode/duck_db/attack_ms/release_ms、Breeze 生成参数（cfg_scale/max_new_tokens/temperature/top_k/top_p/repetition_penalty/depth_*/seed）；输出 `total_seconds`、`segment_count`、`plan`；**超长只提醒不缩句**，多段复用同一份 CAST；**可选依赖 ComfyUI-Breeze-TTS-2**，缺包报 `DD-E050` |
 
 参数顺序规则：**只追加**；`*_policy` 放在对应输入旁；旧 ID 提供别名。
 

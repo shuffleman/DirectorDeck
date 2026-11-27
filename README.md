@@ -13,7 +13,7 @@ ComfyUI 节点库：**AI 短剧导演台**。把「模型 + 素材 + 剧本 + �
 - **数字人锁音**：给定角色配音，音频流以 `noise_mask=0` 锁进 AV latent，模型只生成画面；
   成片可选用源音轨无损混流。
 - **多角色混音**：`auto_duck` / `priority` / `sum` 三种规则，自动 ducking、每角色增益/优先级、
-  段边界交叉淡化、跨段增益连续性。
+  段边界交叉淡化、跨段增益/限幅连续性。
 - **抽卡缓存**：画面级 mp4 + 音轨/latent npz 磁盘缓存，命中即跳过采样；TTS 音频内容参与指纹。
 - **本地 TTS**：可接 ComfyUI-Breeze-TTS-2；台词表节点一键多角色配音并直接输出可锁音的 CAST。
 - **导演台面板**：加下一段、加覆盖、重抽、看段清单、切换混音/调 duck 电平。
@@ -54,6 +54,7 @@ ComfyUI 节点库：**AI 短剧导演台**。把「模型 + 素材 + 剧本 + �
 | `DirectorDeck_M8_TTS锁音.json` | 两个 Breeze VoiceDesign → 锁音 → H3 |
 | `DirectorDeck_M9_台词表配音.json` | 台词表一键多角色配音 → 锁音 |
 | `DirectorDeck_M10_台词自动排期.json` | 不写起始秒：按句自动分段 + 自动排期 → 锁音 |
+| `DirectorDeck_M11_超长两段衔接.json` | 台词超长提醒 + 两段复用同一份 CAST 自动衔接 |
 
 ## 使用说明
 
@@ -94,8 +95,13 @@ ComfyUI 节点库：**AI 短剧导演台**。把「模型 + 素材 + 剧本 + �
   - `auto_split` 打开时，一句里多个句号/问号/感叹号会自动拆成多句分别生成、分别排期；
   - `chars_per_second` 只用于生成前预估语速，摘要里给出「预估总长 vs 实际总长」；
   - 输出可锁音 CAST + 3 路可试听音频 + `total_seconds`（可直接回填段时长）；固定 `seed` 可复现/命中缓存。
+  - **台词超长不缩句**：设 `max_seconds`（单段上限）后，超长只提醒并输出 `segment_count` / `plan`
+    （每段建议时间窗）；按计划拆成多段续写即可。
+  - **多段自动衔接**：同一份 CAST 的音轨是整条时间轴的，第 1 段 `cast_policy=replace`，
+    后续段 `cast_policy=inherit` + `previous_segment`（`continuity=latent_tail` 更快）；
+    每段生成器按自己的窗口自动切片，声音天然连续。
 - 画布示例：`DirectorDeck_M8_TTS锁音.json`、`DirectorDeck_M9_台词表配音.json`、
-  `DirectorDeck_M10_台词自动排期.json`。
+  `DirectorDeck_M10_台词自动排期.json`、`DirectorDeck_M11_超长两段衔接.json`。
 
 ### 5. 导演台面板
 

@@ -167,6 +167,22 @@ class ScheduleTest(unittest.TestCase):
         self.assertEqual(audio.schedule_starts([1.0], [-3.0]), [0.0])
         self.assertEqual(audio.schedule_starts([], []), [])
 
+    def test_plan_segments_no_limit(self):
+        self.assertEqual(audio.plan_segments(5.3, 0), [(0.0, 5.3)])
+        self.assertEqual(audio.plan_segments(5.3, 10), [(0.0, 5.3)])
+
+    def test_plan_segments_overflow(self):
+        # 5.3s 按每段最多 5s -> 两段，不缩句、不裁内容
+        self.assertEqual(audio.plan_segments(5.3, 5.0), [(0.0, 5.0), (5.0, 5.3)])
+        # 正好整段 -> 一段
+        self.assertEqual(audio.plan_segments(10.0, 5.0), [(0.0, 5.0), (5.0, 10.0)])
+        # 极端短尾巴也保留
+        self.assertEqual(audio.plan_segments(15.1, 5.0),
+                         [(0.0, 5.0), (5.0, 10.0), (10.0, 15.0), (15.0, 15.1)])
+
+    def test_plan_segments_zero(self):
+        self.assertEqual(audio.plan_segments(0, 5), [(0.0, 0.0)])
+
 
 if __name__ == "__main__":
     unittest.main()

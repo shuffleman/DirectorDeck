@@ -46,12 +46,14 @@ class DirectorDeckTTSBooth:
 
     CATEGORY = f"{CATEGORY}/生成"
     FUNCTION = "build"
-    RETURN_TYPES = (TYPE_CAST, "AUDIO", "AUDIO", "AUDIO", "STRING", "FLOAT")
-    RETURN_NAMES = ("cast", "audio_1", "audio_2", "audio_3", "summary", "total_seconds")
+    RETURN_TYPES = (TYPE_CAST, "AUDIO", "AUDIO", "AUDIO", "STRING", "FLOAT", "INT", "STRING")
+    RETURN_NAMES = ("cast", "audio_1", "audio_2", "audio_3", "summary", "total_seconds",
+                    "segment_count", "plan")
     DESCRIPTION = (
         "一张台词表搞定多角色配音：每行“角色 @起始秒 | 音色描述 | 台词”，"
         "起始秒可省略（自动按句排期）；自动调 Breeze-TTS-2 生成并拼成角色音轨，"
-        "输出可直接锁音的 CAST、总时长。角色顺序即 ducking 优先级。需要 ComfyUI-Breeze-TTS-2。")
+        "输出可直接锁音的 CAST、总时长、段数/分段计划（超长只提醒，不缩句）。"
+        "角色顺序即 ducking 优先级。需要 ComfyUI-Breeze-TTS-2。")
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -70,6 +72,8 @@ class DirectorDeckTTSBooth:
                 "chars_per_second": ("FLOAT", {"default": audio_math.SPEECH_CPS_DEFAULT,
                                                "min": 1.0, "max": 12.0, "step": 0.1,
                                                "tooltip": "生成前按字数预估语速（仅摘要里参考，实际以音频为准）"}),
+                "max_seconds": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 600.0, "step": 0.5,
+                                          "tooltip": "单段时长上限；总长超过它只做提醒+分段计划（不缩句、不加速），0=不检查"}),
                 "mix_mode": (list(audio_math.MIX_MODES),
                              {"default": "auto_duck",
                               "tooltip": "auto_duck=谁响谁不被压 / priority=按角色顺序 / sum=只叠加"}),
@@ -100,6 +104,7 @@ class DirectorDeckTTSBooth:
     def IS_CHANGED(cls, **kwargs):
         key = {k: kwargs.get(k) for k in (
             "lines", "auto_start", "auto_split", "pause_ms", "chars_per_second",
+            "max_seconds",
             "mix_mode", "duck_db", "attack_ms", "release_ms", "cfg_scale",
             "max_new_tokens", "temperature", "top_k", "top_p", "repetition_penalty",
             "depth_temperature", "depth_top_k", "depth_top_p", "seed")}
@@ -161,6 +166,7 @@ class DirectorDeckTTSBooth:
     def build(self, breeze_model, lines, auto_start=True, auto_split=True,
               pause_ms=int(audio_math.PAUSE_MS_DEFAULT),
               chars_per_second=audio_math.SPEECH_CPS_DEFAULT,
+              max_seconds=0.0,
               mix_mode="auto_duck", duck_db=audio_math.DUCK_DB_DEFAULT,
               attack_ms=int(audio_math.ATTACK_MS_DEFAULT),
               release_ms=int(audio_math.RELEASE_MS_DEFAULT),
@@ -289,6 +295,29 @@ class DirectorDeckTTSBooth:
                                   default=0.0), 3)
         estimated = round(sum(unit["estimate"] for unit in units)
                           + pause * max(0, len(units) - 1), 3)
+
+        # 8) 超长只提醒，不缩句：给出“按当前段长上限需要几段、每段从哪到哪”的计划。
+        windows = audio_math.plan_segments(total_seconds, float(max_seconds))
+        segment_count = len(windows)
+        limit = float(max_seconds)
+        if segment_count > 1:
+            plan_lines = " / ".join(
+                f"第{i + 1}段 {start:.2f}–{end:.2f}s（{end - start:.2f}s）"
+                for i, (start, end) in enumerate(windows))
+            plan = (f"⚠ 台词超长：总长 {total_seconds:.2f}s > 段长上限 {limit:.2f}s；"
+                    f"需要 {segment_count} 段（不缩句、不加速）：{plan_lines}。"
+                    "多段衔接：第 1 段 cast_policy=replace，后续段 cast_policy=inherit + previous_segment；"
+                    "同一份 cast 音轨是整条时间轴的，生成器会按每段窗口自动切片。")
+            print(f"[DirectorDeck] 台词超长提醒：{plan}")
+        else:
+            plan = (f"总长 {total_seconds:.2f}s，"
+                    + (f"未超过段长上限 {limit:.2f}s，单段可容纳。" if limit > 0
+                       else "未设置段长上限（max_seconds=0），单段输出。"))
+        overflow_note = ""
+        if segment_count > 1:
+            overflow_note = (f"；⚠ 超长 {total_seconds - limit:.2f}s"
+                             f"（建议拆 {segment_count} 段，不缩句）")
+
         timeline = " / ".join(
             f"{unit['role']}@{unit['start']:.2f}+{unit['duration']:.2f}s"
             for unit in units)
@@ -296,6 +325,8 @@ class DirectorDeckTTSBooth:
         summary = (
             f"台词 {len(units)} 句（原始 {len(entries)} 行），{len(order)} 个角色：{desc}；"
             f"总长 {total_seconds:.2f}s（生成前预估约 {estimated:.2f}s）；"
-            f"排期：{timeline}；混音={mix_mode}({duck_db:+.1f}dB, {attack_ms}/{release_ms}ms)")
+            f"排期：{timeline}；混音={mix_mode}({duck_db:+.1f}dB, {attack_ms}/{release_ms}ms)"
+            f"{overflow_note}")
         print(f"[DirectorDeck] TTS 台词表：{summary}")
-        return (cast, previews[0], previews[1], previews[2], summary, float(total_seconds))
+        return (cast, previews[0], previews[1], previews[2], summary,
+                float(total_seconds), int(segment_count), plan)

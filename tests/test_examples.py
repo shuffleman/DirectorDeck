@@ -152,6 +152,25 @@ class ExampleTest(unittest.TestCase):
         self.assertEqual(booth["inputs"]["mix_mode"], "priority")
         self.assertTrue(booth["inputs"]["auto_split"])
 
+    def test_m11_tts_chain(self):
+        graph = load("m11_tts_chain_api.json")
+        self._check(graph)
+        booth = next(n for n in graph.values()
+                     if n["class_type"] == "DirectorDeck_TTSBooth")
+        self.assertEqual(float(booth["inputs"]["max_seconds"]), 5.0)
+        self.assertTrue(booth["inputs"]["auto_start"])
+        takes = [n for n in graph.values()
+                 if n["class_type"] == "DirectorDeck_DirectorTake"]
+        self.assertEqual(len(takes), 2)
+        second = next(n for n in takes if n["inputs"]["segment_index"] == 2)
+        self.assertEqual(second["inputs"]["continuity"], "latent_tail")
+        self.assertEqual(second["inputs"]["cast_policy"], "inherit")
+        self.assertIn("previous_segment", second["inputs"])
+        cut = next(n for n in graph.values()
+                   if n["class_type"] == "DirectorDeck_FinalCut")
+        self.assertIn("segment_2", cut["inputs"])
+        self.assertTrue(cut["inputs"]["audio_from_source"])
+
     def test_m10_tts_auto(self):
         graph = load("m10_tts_auto_api.json")
         self._check(graph)

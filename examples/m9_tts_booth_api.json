@@ -80,6 +80,7 @@
       "auto_split": true,
       "pause_ms": 300,
       "chars_per_second": 4.5,
+      "max_seconds": 0.0,
       "mix_mode": "priority",
       "duck_db": -8.0,
       "attack_ms": 60,

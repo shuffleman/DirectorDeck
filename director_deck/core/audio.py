@@ -74,6 +74,7 @@ DUCK_DB_DEFAULT = -8.0
 ATTACK_MS_DEFAULT = 60.0
 RELEASE_MS_DEFAULT = 200.0
 SILENCE_RATIO = 0.02  # 能量低于全局峰值的 2% 当“没说话”
+LIMITER_CEILING = 0.99  # 混音峰值上限（限幅门限）
 
 
 def db_to_linear(db: float) -> float:
@@ -195,7 +196,7 @@ def equal_power_mix(a: list[float], b: list[float]) -> list[float]:
     return out
 
 
-def apply_limiter(peak: float, *, ceiling: float = 0.99) -> float:
+def apply_limiter(peak: float, *, ceiling: float = LIMITER_CEILING) -> float:
     """全局限幅：峰值超过 ceiling 就整体缩下来（返回要乘的系数）。
 
     为什么不用 tanh 软削波？锁音是“台词”，要求可懂度；硬限幅只降整体电平，
@@ -256,3 +257,26 @@ def schedule_starts(durations: list[float], explicit_starts: list[float | None],
         starts.append(round(start, 3))
         cursor = max(cursor, start + max(0.0, float(duration)) + max(0.0, float(pause_seconds)))
     return starts
+
+
+def plan_segments(total_seconds: float, max_seconds: float) -> list[tuple[float, float]]:
+    """按“每段最多 max_seconds”把总时长切成多段（只给提醒/衔接计划，不缩句）。
+
+    返回 `[(start, end), ...]`；没超长或没设上限时返回单段 `[(0, total)]`。
+    **不会裁台词、不会加速**——只告诉你按现有段长上限需要几段、每段从哪到哪。
+    """
+    import math
+    total = max(0.0, float(total_seconds))
+    limit = float(max_seconds)
+    if total <= 0:
+        return [(0.0, 0.0)]
+    if limit <= 0 or total <= limit + 1e-9:
+        return [(0.0, total)]
+    count = max(1, math.ceil(total / limit - 1e-9))
+    windows = []
+    start = 0.0
+    for _ in range(count):
+        end = min(total, start + limit)
+        windows.append((round(start, 3), round(end, 3)))
+        start = end
+    return windows

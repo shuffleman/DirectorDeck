@@ -36,6 +36,7 @@
 | **0.3.0**（✅） | TTS 台词表节点（台词表→多角色 TTS→CAST）；M8/M9 画布工作流 | M9 真机 2 角色/124 帧；单角色段 corr=1.000，ducking 中位 -7.30dB/p10 -7.87dB；缓存重跑 Take 0.41s；9 个 UI 工作流 round-trip 全 PASS |
 | **0.3.1**（✅） | 文档整理：README 只保留功能与使用方式；工程约定/目录/开发验证移到 docs/ENGINEERING.md | README 无开发内容；验证数据统一在 ENGINEERING + CHANGELOG |
 | **0.4.0**（✅） | 台词表自动排期：auto_start / auto_split / pause_ms / chars_per_second + total_seconds 输出；M10 画布工作流 | M10 真机：自动分段 3 句、自动排期起点与摘要一致；10 个 UI 工作流 round-trip 全 PASS |
+| **0.5.0**（✅） | 台词超长提醒（max_seconds + segment_count/plan，不缩句）+ 多段复用同一份 CAST 自动衔接；M11 画布工作流 | M11 真机：超长提醒/分段计划；两段 latent 衔接成片，跨段 CAST 切片连续；11 个 UI 工作流全 PASS |
 
 ## 工程约定
 

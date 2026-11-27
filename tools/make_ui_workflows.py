@@ -584,7 +584,7 @@ def make_m9_booth(oi):
              values={"lines": "女主 @0.0 | 一位年轻女性，声音清澈温柔，语速偏慢，情绪平静。 | 你好，我是这部剧的女主角。\n"
                              "男主 @1.2 | 一位年轻男性，声音低沉沉稳，语气干练。 | 收到，我去检查船桨，五分钟以后开拍。",
                      "auto_start": True, "auto_split": True,
-                     "pause_ms": 300, "chars_per_second": 4.5,
+                     "pause_ms": 300, "chars_per_second": 4.5, "max_seconds": 0.0,
                      "mix_mode": "priority", "duck_db": -8.0,
                      "attack_ms": 60, "release_ms": 200,
                      "cfg_scale": 4.0, "max_new_tokens": 1500,
@@ -653,7 +653,7 @@ def make_m10_auto(oi):
              values={"lines": "女主 | 一位年轻女性，声音清澈温柔，语速偏慢，情绪平静。 | 你好。我是女主角。\n"
                              "男主 | 一位年轻男性，声音低沉沉稳，语气干练。 | 收到，我去检查船桨。",
                      "auto_start": True, "auto_split": True,
-                     "pause_ms": 250, "chars_per_second": 4.5,
+                     "pause_ms": 250, "chars_per_second": 4.5, "max_seconds": 0.0,
                      "mix_mode": "priority", "duck_db": -8.0,
                      "attack_ms": 60, "release_ms": 200,
                      "cfg_scale": 4.0, "max_new_tokens": 1500,
@@ -707,6 +707,86 @@ def make_m10_auto(oi):
          "color": "#b58b2a", "font_size": 22, "flags": {}},
     ]
     return build_ui(oi, nodes, groups, "DirectorDeck_M10_台词自动排期")
+
+
+def make_m11_chain(oi):
+    """M11：台词超长 -> 提醒 + 两段自动衔接（同一份 cast 复用）。"""
+    lines = ("女主 | 一位年轻女性，声音清澈温柔，语速偏慢，情绪平静。 | 你好，我是女主角。今天拍湖上的戏。\n"
+             "男主 | 一位年轻男性，声音低沉沉稳，语气干练。 | 收到，我去检查船桨。五分钟以后开拍。")
+    nodes = [
+        loader_node(), config_node(), script_node(),
+        dict(id=4, type="BreezeTTS2LoadModel", pos=[-20, 1120], size=[400, 260],
+             values={"model": "int8 hybrid (recommended)", "dtype": "auto",
+                     "device": "auto", "attention": "auto",
+                     "decode_mode": "eager", "download_if_missing": False},
+             title="Breeze TTS 2（int8 hybrid）"),
+        dict(id=5, type="DirectorDeck_TTSBooth", pos=[420, 0], size=[440, 860],
+             values={"lines": lines,
+                     "auto_start": True, "auto_split": True,
+                     "pause_ms": 250, "chars_per_second": 4.5, "max_seconds": 5.0,
+                     "mix_mode": "priority", "duck_db": -8.0,
+                     "attack_ms": 60, "release_ms": 200,
+                     "cfg_scale": 4.0, "max_new_tokens": 1500,
+                     "temperature": 0.9, "top_k": 50, "top_p": 1.0,
+                     "repetition_penalty": 1.1, "depth_temperature": 0.9,
+                     "depth_top_k": 50, "depth_top_p": 1.0,
+                     "seed": 20261130},
+             links_in={"breeze_model": (4, 0)},
+             title="台词表（超长只提醒不缩句；输出分段计划）"),
+        dict(id=10, type="DirectorDeck_DirectorTake", pos=[920, 0], size=[380, 520],
+             values={"segment_index": 1, "bundle_policy": "provided",
+                     "config_policy": "inherit", "assets_policy": "clear",
+                     "brief_policy": "inherit", "cast_policy": "replace",
+                     "continuity": "start", "seed": 0, "cache_mode": "auto"},
+             links_in={"bundle": (1, 0), "config": (2, 0), "script": (3, 0),
+                       "cast": (5, 0)}),
+        dict(id=11, type="DirectorDeck_DirectorTake", pos=[920, 560], size=[380, 540],
+             values={"segment_index": 2, "bundle_policy": "inherit",
+                     "config_policy": "inherit", "assets_policy": "inherit",
+                     "brief_policy": "inherit", "cast_policy": "inherit",
+                     "continuity": "latent_tail", "seed": 0, "cache_mode": "auto"},
+             links_in={"bundle": (1, 0), "config": (2, 0), "script": (3, 0),
+                       "previous_segment": (10, 0)}),
+        dict(id=40, type="DirectorDeck_FinalCut", pos=[1340, 0], size=[420, 620],
+             values={"save_manifest": True, "audio_from_source": True,
+                     "audio_crossfade_ms": 0},
+             links_in={"segment_1": (10, 0), "images_1": (10, 1), "audio_1": (10, 2),
+                       "segment_2": (11, 0), "images_2": (11, 1),
+                       "audio_2": (11, 2)}, title="合并两段（源音轨，天然连续）"),
+        dict(id=41, type="CreateVideo", pos=[1780, 0], size=[320, 200],
+             values={"fps": 24.0, "bit_depth": 8, "color_space": "sRGB",
+                     "chroma_subsampling": "auto", "codec": "h264"},
+             links_in={"images": (40, 0), "audio": (40, 1)}),
+        dict(id=42, type="SaveVideo", pos=[1780, 240], size=[360, 200],
+             values={"filename_prefix": "DirectorDeck/M11_chain",
+                     "format": "auto", "format.codec": "auto", "codec": "auto"},
+             links_in={"video": (41, 0)}),
+        dict(id=43, type="SaveAudio", pos=[1780, 480], size=[360, 110],
+             values={"filename_prefix": "DirectorDeck/M11_chain_mix"},
+             links_in={"audio": (40, 1)}),
+        dict(id=44, type="SaveAudio", pos=[1780, 620], size=[360, 110],
+             values={"filename_prefix": "DirectorDeck/M11_chain_a"},
+             links_in={"audio": (5, 1)}),
+        dict(id=45, type="SaveAudio", pos=[1780, 760], size=[360, 110],
+             values={"filename_prefix": "DirectorDeck/M11_chain_b"},
+             links_in={"audio": (5, 2)}),
+        dict(id=50, type="Note", pos=[920, 1140], size=[760, 300],
+             text="【M11 超长提醒 + 多段衔接】\n"
+                  "自动排期总长超过 max_seconds 时，节点只提醒并输出分段计划（segment_count/plan），\n"
+                  "不会缩句、不会加速、不会裁台词。\n"
+                  "多段衔接：第 1 段 cast_policy=replace；第 2 段 cast_policy=inherit +\n"
+                  "previous_segment + continuity=latent_tail。TTSBooth 的 cast 音轨是整条时间轴的，\n"
+                  "每段生成器会按自己的时间窗口自动切片，所以声音天然连续。"),
+    ]
+    groups = [
+        {"title": "模型 / 配置 / 剧本", "bounding": [-60, -20, 460, 1420],
+         "color": "#3f789e", "font_size": 22, "flags": {}},
+        {"title": "台词表（超长提醒 + 分段计划）", "bounding": [400, -20, 480, 1000],
+         "color": "#8A8", "font_size": 22, "flags": {}},
+        {"title": "两段衔接 / 生成 / 输出", "bounding": [900, -20, 1300, 1480],
+         "color": "#b58b2a", "font_size": 22, "flags": {}},
+    ]
+    return build_ui(oi, nodes, groups, "DirectorDeck_M11_超长两段衔接")
 
 
 def make_m1(oi):
@@ -967,6 +1047,7 @@ WORKFLOWS = [
     ("m8_tts_lock_api", make_m8_tts),
     ("m9_tts_booth_api", make_m9_booth),
     ("m10_tts_auto_api", make_m10_auto),
+    ("m11_tts_chain_api", make_m11_chain),
 ]
 
 

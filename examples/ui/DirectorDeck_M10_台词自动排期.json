@@ -1,5 +1,5 @@
 {
-  "id": "2fecfdc3-6695-4231-9776-9fdf22541227",
+  "id": "054272a1-b5a9-4007-b149-9e7f27068844",
   "revision": 0,
   "last_node_id": 50,
   "last_link_id": 14,
@@ -705,6 +705,15 @@
           "link": null
         },
         {
+          "localized_name": "max_seconds",
+          "name": "max_seconds",
+          "type": "FLOAT",
+          "widget": {
+            "name": "max_seconds"
+          },
+          "link": null
+        },
+        {
           "localized_name": "mix_mode",
           "name": "mix_mode",
           "type": "COMBO",
@@ -879,6 +888,20 @@
           "type": "FLOAT",
           "slot_index": 5,
           "links": []
+        },
+        {
+          "localized_name": "segment_count",
+          "name": "segment_count",
+          "type": "INT",
+          "slot_index": 6,
+          "links": []
+        },
+        {
+          "localized_name": "plan",
+          "name": "plan",
+          "type": "STRING",
+          "slot_index": 7,
+          "links": []
         }
       ],
       "properties": {
@@ -890,6 +913,7 @@
         true,
         250,
         4.5,
+        0.0,
         "priority",
         -8.0,
         60,

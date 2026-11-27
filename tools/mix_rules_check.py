@@ -128,6 +128,33 @@ def main() -> int:
           f"重置={db(b_fresh):.2f}dB  差={db(b_cont) - db(b_fresh):+.2f}dB")
     print("（差值为负说明第二段一开始就保持上一段的 ducking，没有弹回 1.0）")
 
+    print("=== 跨段限幅连续性（段1触发限幅、段2要不要沿用同一电平） ===")
+    # 两段都同时说话且很响：段1 峰值超限 -> 限幅系数 <1；段2 若不等电平就会突然变响。
+    loud_a = tone(440.0, 0.70, 0.0, 2 * DUR, duration=2 * DUR)
+    loud_b = tone(880.0, 0.70, 0.0, 2 * DUR, duration=2 * DUR)
+    loud_roles = [role("A", loud_a, priority=2), role("B", loud_b, priority=1)]
+    seg1, ctx1 = av_latent.build_audio_track(
+        loud_roles, 0.0, DUR, SR, mix=mix_rule, return_context=True)
+    seg2_cont, ctx2 = av_latent.build_audio_track(
+        loud_roles, DUR, 2 * DUR, SR, mix=mix_rule, previous=ctx1, return_context=True)
+    seg2_fresh, _ = av_latent.build_audio_track(
+        loud_roles, DUR, 2 * DUR, SR, mix=mix_rule, return_context=True)
+    print("段1限幅=%.3f 段2延续限幅=%.3f 段2重置限幅=%.3f"
+          % (ctx1["limiter"], ctx2["limiter"], 1.0))
+
+    def boundary_metrics(second):
+        first = seg1.view(-1).numpy()
+        other = second.view(-1).numpy()
+        rms_before = float(np.sqrt((first[-1600:] ** 2).mean()))
+        rms_after = float(np.sqrt((other[:1600] ** 2).mean()))
+        db = 20 * math.log10(max(rms_after, 1e-9) / max(rms_before, 1e-9))
+        jump = float(abs(other[0] - first[-1]))
+        return rms_before, rms_after, db, jump
+
+    for label, second in (("延续上一段限幅", seg2_cont), ("重置限幅", seg2_fresh)):
+        rb, ra, delta, jump = boundary_metrics(second)
+        print(f"  {label:<10} 段边界 RMS {rb:.4f}->{ra:.4f} ({delta:+.2f}dB) 跳变={jump:.5f}")
+
     print("=== 结论 ===")
     print("priority 模式下 B 的重叠区相对独唱区应接近 -8dB；sum 应接近 0dB；")
     print("auto_duck 应按响度自动选主说话人；跨段默认继承上一段结尾增益。")

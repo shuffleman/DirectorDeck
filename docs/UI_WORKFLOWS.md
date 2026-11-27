@@ -15,6 +15,7 @@
 | `DirectorDeck_M8_TTS锁音.json` | 本地 Breeze-TTS-2 两路发声 → 锁音 | 想用本地 TTS 当配音 |
 | `DirectorDeck_M9_台词表配音.json` | 台词表一键多角色配音 → 锁音 | 台词都是文本、想少摆节点 |
 | `DirectorDeck_M10_台词自动排期.json` | 不写起始秒，按句自动分段/自动排期 | 懒得算每句起点、想先跑起来 |
+| `DirectorDeck_M11_超长两段衔接.json` | 超长提醒 + 多段复用同一份 CAST 衔接 | 台词总长超过一段的时长 |
 
 ## 打开后先改什么
 
@@ -64,6 +65,16 @@
 - 角色第一次出现的顺序 = ducking 优先级；`seed` 固定可复现；
 - 输出 `cast` 直接接视频生成器（`cast_policy=replace`），`audio_1..3` 可接 SaveAudio 试听，
   `total_seconds` 可回填全局配置的段时长。
+
+### 台词超长怎么办（不缩句）
+
+- 在台词表节点上设 `max_seconds`（例如 5.0）；超长时节点只提醒，输出 `segment_count` 和 `plan`：
+  `plan` 会给出每段建议时间窗（如“第1段 0.00–5.00s / 第2段 5.00–7.80s”）。
+- 按 `segment_count` 接对应数量的生成器做多段续写：
+  第 1 段 `cast_policy=replace`；后续段 `cast_policy=inherit` + `previous_segment`
+  （`continuity=latent_tail` 最快）。**同一份 cast 不用重新生成**：它的音轨是整条时间轴的，
+  每段生成器按自己的窗口自动切片。
+- 不会自动缩句、不会加速、不会裁台词；如果确实要短，请自己改台词文案。
 
 ## 多角色锁音的角色行格式
 
