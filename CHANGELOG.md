@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.7.0 — 预置漫剧老李 Skill 全集 + V6 提示词模板（2026-11-28）
+
+### 新增
+- **预置「漫剧老李 AIGC 全流程 Skill」全集**（MIT，V8.2.0-SLIM）到 `skills/manju_laoli/`：
+  - 11 个 skill：`short-drama-director` + `sd-decision/recon/script/asset/storyboard/combat/xuanhuan/real/feed/qc-engine`；
+  - 每个 skill 带 `SKILL.md` + `references/`（共 143 个文件，约 2.7MB；不含 scripts/assets/CI）；
+  - 附带 `LICENSE`、`README.md`、`NOTICE.md`（来源、commit、许可以及上下文大小建议）。
+- **预置「MiniMax H3 分段无限视频生成提示词模板 V6」**到 `skills/minimax_h3_v6/SKILL.md`
+  （含 `NOTICE.md` 说明来源与用法）。
+- `skills/` 扫描支持“套件子目录”：下拉框里显示 `manju_laoli/<子技能>` 与 `minimax_h3_v6`；
+  编剧台可直接选，无需先手动导入。
+- 新增维护脚本 `tools/preset_bundled_skills.py`：上游更新后可重新同步这两个 skill 源。
+
+### 验证
+- 启动后编剧台 skill 下拉共 **13 项**（内置 1 + 漫剧老李 11 + V6 1）。
+- 加载检查：V6 全文 10,437 字符可解析（示例段头转回 6 段剧本）；
+  `short-drama-director` 主控按默认 6 万字符上限加载并标记截断；其余子技能 3k~17k 字符。
+- 单测新增 `test_bundled_skills.py`，总计 **146 个全绿**。
+
 ## 0.6.0 — 编剧台：Skill + 小说 → 剧本 → TTS → 锁音（2026-11-28）
 
 ### 新增

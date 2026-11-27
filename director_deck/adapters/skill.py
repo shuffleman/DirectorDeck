@@ -49,21 +49,41 @@ def _entry_file(folder: str) -> str | None:
 
 
 def discover(root: str | None = None) -> list[dict]:
-    """扫描 skills 目录，返回 [{id,label,path,kind}]（目录在前、文件在后）。"""
+    """扫描 skills 目录，返回 [{id,label,path,kind}]。
+
+    支持两种布局：
+    - 扁平：`skills/xxx/SKILL.md` 或 `skills/xxx.md`；
+    - 套件：`skills/manju_laoli/<子技能>/SKILL.md`（id 会写成 `manju_laoli/<子技能>`）。
+    """
     base = skills_root(root)
     found: list[dict] = []
     if not os.path.isdir(base):
         return found
+
+    def add(path: str, identifier: str) -> None:
+        text = _read(path)
+        meta = _meta(text)
+        found.append({"id": identifier, "label": meta.get("name") or identifier,
+                      "path": path, "kind": "dir",
+                      "description": meta.get("description", "")})
+
     for name in sorted(os.listdir(base)):
+        if name.startswith((".", "_")):
+            continue
         path = os.path.join(base, name)
         if os.path.isdir(path):
             entry = _entry_file(path)
             if entry:
-                text = _read(entry)
-                meta = _meta(text)
-                found.append({"id": name, "label": meta.get("name") or name,
-                              "path": entry, "kind": "dir",
-                              "description": meta.get("description", "")})
+                add(entry, name)
+                continue
+            # 套件目录：再往下扫一层子技能（跳过 references/scripts 之类的资料目录）
+            for sub in sorted(os.listdir(path)):
+                sub_path = os.path.join(path, sub)
+                if not os.path.isdir(sub_path) or sub.startswith((".", "_")):
+                    continue
+                sub_entry = _entry_file(sub_path)
+                if sub_entry:
+                    add(sub_entry, f"{name}/{sub}")
         elif name.lower().endswith(".md"):
             if name.lower() in ("readme.md", "license.md"):
                 continue

@@ -55,7 +55,8 @@ TTS 输出 24kHz 单声道，锁音器会自动重采样到 32kHz。
 - `model` 留空会自动取 `/models` 的第一个；
 - API Key 不写进工作流：设置环境变量（默认 `OPENAI_API_KEY`），节点填变量名即可；
 - 没有真实模型时可先跑 `python tools/mock_llm.py --port 18081` 联调（返回固定剧本）；
-- skill 放 `skills/` 或 `python tools/import_skill.py <路径>` 导入。
+- `skills/` 已预置内置规则、漫剧老李全集（11 个）和 H3 V6 模板，可直接在下拉框选择；
+  也可 `python tools/import_skill.py <路径>` 导入外部 skill。
 
 ## 2. 安装（三选一）
 

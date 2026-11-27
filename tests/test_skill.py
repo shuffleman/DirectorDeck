@@ -25,6 +25,20 @@ class SkillTest(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
+    def test_nested_suite_discovery(self):
+        os.makedirs(os.path.join(self.root, "suite", "engine_a"))
+        with open(os.path.join(self.root, "suite", "engine_a", "SKILL.md"), "w", encoding="utf-8") as fh:
+            fh.write("# 子技能 A\n")
+        ids = [item["id"] for item in skill.discover(self.root)]
+        self.assertIn("suite/engine_a", ids)
+
+    def test_load_nested_suite(self):
+        os.makedirs(os.path.join(self.root, "suite", "engine_a"))
+        with open(os.path.join(self.root, "suite", "engine_a", "SKILL.md"), "w", encoding="utf-8") as fh:
+            fh.write("# 子技能 A\n内容\n")
+        data = skill.load("suite/engine_a", root=self.root)
+        self.assertIn("子技能 A", data["text"])
+
     def test_discover_and_choices(self):
         entries = skill.discover(self.root)
         ids = [item["id"] for item in entries]

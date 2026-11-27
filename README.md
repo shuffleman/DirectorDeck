@@ -116,8 +116,9 @@ ComfyUI 节点库：**AI 短剧导演台**。把「模型 + 素材 + 剧本 + �
 
 `DirectorDeck_ScriptSmith` 把小说/梗概变成可拍的剧本：
 
-1. **准备 skill**：把规则包放进 `skills/`（目录里放 `SKILL.md`，可选 `references/`），或用
-   `python tools/import_skill.py <路径>` 导入外部 skill（也支持单个 `.md` 提示词模板）。
+1. **选 skill**：`skills/` 已预置 **内置编剧规则**、**漫剧老李全集（11 个 skill）** 和
+   **H3 V6 分段提示词模板**，下拉框直接选；也可用 `python tools/import_skill.py <路径>`
+   导入外部 skill（支持目录式 `SKILL.md` 或单个 `.md` 提示词模板）。
 2. **选模型**：`provider` 选本地或远程（都走 OpenAI 兼容接口）：
    - 本地：LM Studio `http://127.0.0.1:1234/v1`、Ollama `http://127.0.0.1:11434/v1`、vLLM 等；
    - 远程：填 `base_url`（如 `https://api.deepseek.com/v1`）和模型名，Key 放环境变量

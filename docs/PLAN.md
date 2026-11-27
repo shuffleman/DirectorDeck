@@ -38,6 +38,7 @@
 | **0.4.0**（✅） | 台词表自动排期：auto_start / auto_split / pause_ms / chars_per_second + total_seconds 输出；M10 画布工作流 | M10 真机：自动分段 3 句、自动排期起点与摘要一致；10 个 UI 工作流 round-trip 全 PASS |
 | **0.5.0**（✅） | 台词超长提醒（max_seconds + segment_count/plan，不缩句）+ 多段复用同一份 CAST 自动衔接；M11 画布工作流 | M11 真机：超长提醒/分段计划；两段 latent 衔接成片，跨段 CAST 切片连续；11 个 UI 工作流全 PASS |
 | **0.6.0**（✅） | 编剧台 ScriptSmith：skill 加载 + 小说转剧本（本地/远程 OpenAI 兼容 LLM、输出语言、素材/角色对齐、script + voice_lines 输出）；M12 画布；import_skill / mock_llm 工具 | M12 真机：mock LLM → 剧本 → TTS → 锁音成片；12 个 UI 工作流全 PASS；140 单测 |
+| **0.7.0**（✅） | 预置漫剧老李 Skill 全集（11 个 skill + references）与 H3 V6 提示词模板到 `skills/`；skill 扫描支持套件子目录 | 13 项 skill 可选；V6 可解析；146 单测 |
 
 ## 工程约定
 
