@@ -62,6 +62,22 @@ python tools\run_example.py examples\m1_single_segment_api.json --server http://
 
 产物：`output/DirectorDeck/M1_single*.mp4`，运行记录在 `runs/m1_server/`。
 
+**M2 三段链（验证数据）**：
+
+```powershell
+python tools\run_example.py examples\m2_chain_api.json --server http://127.0.0.1:8189
+python tools\run_example.py examples\m2_reroll_seg2_api.json --server http://127.0.0.1:8189
+```
+
+| 指标 | 结果 |
+|---|---|
+| 成片 | 3 段 / 396 帧 / 16.5s / 640x352 / h264+AAC |
+| 段边界亮度差 | 0.00141 与 0.00020（阈值 <0.01） |
+| 续写引导 | 第 2/3 段 `guide.used=true`（22 帧尾画面 + 尾音） |
+| 接缝修正 | `seam.apply=true, gain=0.96, offset≈0.027/0.030`，残余 0.0019/0.0006 |
+| 抽卡缓存 | 只改第 2 段 seed 重跑：`execution_cached=["1","2","3","10"]`（模型/配置/剧本/**第 1 段**复用），总耗时 695s→406s |
+| 落盘 | `output/DirectorDeck/segments/*.json`（每段元数据）、`output/DirectorDeck/manifests/*.json`（成片清单） |
+
 ## 目录
 
 ```

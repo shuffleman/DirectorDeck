@@ -24,7 +24,7 @@
 |---|---|---|
 | **M0**（✅ 完成） | 仓库骨架、CONTRACTS、core 纯函数（frames/policy/assets/script）、单测、CI | `python -m unittest discover -s tests` 全绿（56 用例） |
 | **M1**（✅ 完成） | `adapters/h3.py`、节点（Loader/Config/AssetShelf/ScriptDesk/SegmentBrief/DirectorTake）、API 示例、真机验证 | 8189 实例：124 帧 / 5.16s / 640x352 / h264+AAC 出片；参考生视频示例同步验证 |
-| **M2**（✅ 完成） | FramePlanner、接续写（尾帧+尾音 AddGuide）、SeamFixer（曝光匹配）、FinalCut（裁头+合并+manifest）、SegmentCache（抽卡记录） | 8189 实例 3 段链：396 帧 / 16.5s / 640x352；段边界亮度差 0.00141 与 0.00020（<0.01）；重抽第 2 段示例单独验证 |
+| **M2**（✅ 完成） | FramePlanner、接续写（尾帧+尾音 AddGuide）、SeamFixer（曝光匹配）、FinalCut（裁头+合并+manifest）、SegmentCache（抽卡记录） | 8189 实例 3 段链：396 帧 / 16.5s / 640x352；段边界亮度差 0.00141 与 0.00020（<0.01）；改第 2 段 seed 重跑 `execution_cached=["1","2","3","10"]`，只重跑 2/3 段（695s→406s） |
 | M3 | VoiceLock（真锁音 + 音频切片）、Refiner（先超分后 latent 二采） | 数字人段（给定音轨）；二采后音轨不变 |
 | M4 | web extension：素材画布、剧本编辑器、添加下一段、抽卡、进度、i18n | 全流程免命令行 |
 | M5 | 文档、4 个示例工作流、Comfy Registry 发布 | 一键安装 + 示例可跑 |
