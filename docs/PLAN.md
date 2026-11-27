@@ -22,8 +22,8 @@
 
 | 阶段 | 交付 | 验收 |
 |---|---|---|
-| **M0**（进行中） | 仓库骨架、CONTRACTS、core 纯函数（frames/policy/assets/script）、单测、CI | `python -m unittest discover -s tests` 全绿 |
-| M1 | `adapters/h3.py`、`nodes/`（Loader/Config/AssetShelf/ScriptDesk/DirectorTake T2VA·I2VA·Ref2VA）、单段输出与预览 | 9 图 + 5s 单段真机出片 |
+| **M0**（✅ 完成） | 仓库骨架、CONTRACTS、core 纯函数（frames/policy/assets/script）、单测、CI | `python -m unittest discover -s tests` 全绿（56 用例） |
+| **M1**（✅ 完成） | `adapters/h3.py`、节点（Loader/Config/AssetShelf/ScriptDesk/SegmentBrief/DirectorTake）、API 示例、真机验证 | 8189 实例：124 帧 / 5.16s / 640x352 / h264+AAC 出片；参考生视频示例同步验证 |
 | M2 | FramePlanner、ContinuityGuide(RGB)、SegmentCache、SeamFixer、FinalCut、**覆盖/继承解析接入节点** | 3 段 15s 成片；接缝亮度差<0.01；只重跑第 2 段；混合覆盖场景正确 |
 | M3 | VoiceLock（真锁音 + 音频切片）、Refiner（先超分后 latent 二采） | 数字人段（给定音轨）；二采后音轨不变 |
 | M4 | web extension：素材画布、剧本编辑器、添加下一段、抽卡、进度、i18n | 全流程免命令行 |
