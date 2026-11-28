@@ -31,6 +31,11 @@ DirectorDeck 已经去掉了“生成剧本”的节点，剧本从外部生成�
    格式装不下时拆段/拆句，不删剧情、不改角色；
 5. **不抢写文件**：默认只输出文本/报告；用户给路径才保存。
 
+和实际目录里的 **manju-laoli 套装**有一个平台级硬冲突（不是 skill 机制冲突）：
+`sd-feed-engine` 禁用 `@图片N`，而 DirectorDeck 必须用 `@图片N`。
+处理方式是按交付目标二选一；同一份稿不要同时服务 Seedance 和 DirectorDeck，
+两边都要就拆两份。详见 `directordeck-screenplay-bridge/references/platform-compatibility.md`。
+
 详见 `directordeck-screenplay-bridge/references/coexistence-rules.md`。
 
 ## 安装到 agent
@@ -73,6 +78,7 @@ skills/
     references/
       directordeck-formats.md    # 三种导入格式的精确契约与示例
       coexistence-rules.md       # 与其他 skill 的冲突裁决
+      platform-compatibility.md  # 与 manju-laoli/Seedance/H3 V6 的边界
       handoff-schema.md          # 创作 skill → 交付桥的交接字段
     scripts/
       validate_screenplay.py     # 独立格式校验器（纯标准库）

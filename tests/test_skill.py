@@ -107,6 +107,7 @@ class SkillStructureTest(unittest.TestCase):
             "SKILL.md",
             "references/directordeck-formats.md",
             "references/coexistence-rules.md",
+            "references/platform-compatibility.md",
             "references/handoff-schema.md",
             "scripts/validate_screenplay.py",
         ):
@@ -116,8 +117,19 @@ class SkillStructureTest(unittest.TestCase):
         text = open(SKILL_FILE, encoding="utf-8").read()
         for phrase in ("共存契约", "不接管世界观", "泛泛的", "不改写", "不要使用本 skill"):
             self.assertIn(phrase, text)
+        # 和实际套装（manju-laoli/Seedance/V6）的边界必须写清楚，避免同时加载时互相覆盖。
+        for phrase in ("manju-laoli", "sd-feed-engine", "@图片N", "图N", "二选一"):
+            self.assertIn(phrase, text)
         # 不能自称通用编剧规则，避免和创作 skill 抢触发。
         self.assertNotIn("你是短剧/漫剧编剧", text)
+
+    def test_platform_compatibility_reference(self):
+        path = os.path.join(SKILL_DIR, "references", "platform-compatibility.md")
+        text = open(path, encoding="utf-8").read()
+        for phrase in ("sd-feed-engine", "@图片N", "图N", "Seedance", "H3 V6", "二选一"):
+            self.assertIn(phrase, text)
+        # 不能把两个平台的编号混成一条规则。
+        self.assertIn("不能默认等同", text)
 
     def test_no_duplicate_in_home_skill_dirs(self):
         meta = read_frontmatter(SKILL_FILE)

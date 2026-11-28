@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.13.1 — 剧本 skill 与 manju-laoli / H3 V6 的冲突审计（2026-11-28）
+
+### 变更
+- 对实际目录 `F:\AI-Video\剧本生成` 做了冲突审计：
+  - skill 名/目录/脚本文件名**无重复**；`directordeck-screenplay-bridge` 与 `short-drama-director`、
+    `sd-*` 子技能、V6 模板都不重名；
+  - 发现唯一**平台级硬冲突**：manju `sd-feed-engine` 最高优先级术语口径**禁用 `@图片N`**，
+    而 DirectorDeck 导入必须用 `@图片N`（Seedance 用 `图N`/`@CHR-`）；
+  - 处理：两者按交付目标**二选一**；同一份稿不能同时服务两个平台；两边都要就拆两份文件；
+  - manju 的五道锁/六阶段编剧链/分镜/打戏/投喂归 manju；`sd-script-engine` 润色层在上游完成，
+    本 skill 只消费结果做 DirectorDeck 交付格式；
+  - H3 V6 模板不是 skill（无 frontmatter），格式与本 skill 的 V6 契约一致；本 skill 只在
+    “要导入 DirectorDeck”时解析/转换，不重写模板的创作规则。
+- 新增 `references/platform-compatibility.md`（冲突矩阵/路由/故障排查）；
+- 窄化触发：`H3 V6` 不再单独触发本 skill，必须和 DirectorDeck 交付目标一起出现；
+- 目标不明确时先问“交付 Seedance 还是 DirectorDeck”，不默认选边；
+- 同步更新外部安装副本 `F:\AI-Video\剧本生成\directordeck-screenplay-bridge`，并清掉 `__pycache__`。
+- 单测 **160 个全绿**（新增平台兼容参考/触发边界断言）。
+
 ## 0.13.0 — 独立剧本 skill：与其他 skill 共存的外部件交付层（2026-11-28）
 
 ### 新增

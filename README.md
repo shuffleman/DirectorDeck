@@ -196,6 +196,12 @@ ComfyUI 节点库：**AI 短剧导演台**。把「模型 + 素材 + 剧本 + �
 - 自带独立校验器（纯标准库，不依赖 ComfyUI）：
   `python skills/directordeck-screenplay-bridge/scripts/validate_screenplay.py 剧本.txt --format auto`。
 
+已对 `F:\AI-Video\剧本生成` 里的 **manju-laoli 套装 + H3 V6 模板**做过冲突审计：
+无重名/无同路径文件；唯一平台级差异是 `sd-feed-engine` 用 `图N` 且禁用 `@图片N`，
+DirectorDeck 必须用 `@图片N`——按交付目标二选一，两边都要就拆两份。
+详见 [skills/README.md](skills/README.md) 与
+`skills/directordeck-screenplay-bridge/references/platform-compatibility.md`。
+
 详细说明、冲突裁决和安装方式见 [skills/README.md](skills/README.md)。
 
 ## 文档

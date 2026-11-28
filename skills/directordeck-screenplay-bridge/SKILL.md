@@ -24,7 +24,7 @@ description: "把任意来源的剧本草稿整理成 DirectorDeck「剧本导�
 
 - `DirectorDeck`、`剧本导入`、`ScriptImport`、`分段生成`；
 - `@图片N`、`素材槽`、`自动匹配素材`、`锁音`；
-- `H3 V6`、`【第N段｜X秒】`、`第N段（X秒）` 这类交付格式；
+- 用户明确要把 `H3 V6` 文本导入 DirectorDeck（或目标同时包含 DirectorDeck + H3 V6）；
 - 用户已经和别人/别的 skill 写好一版剧本，要求“整理成能直接导入 DirectorDeck 的版本”。
 
 ### 不用
@@ -63,6 +63,28 @@ description: "把任意来源的剧本草稿整理成 DirectorDeck「剧本导�
 - 把其他 skill 的创作规则复制过来重新判断一遍；
 - 因为格式放不下就删事件、删台词、跳段；
 - 输出分析、创作说明、自检表、寒暄或 Markdown 代码围栏（除非用户明确要）。
+
+## 二·五、和具体套装的边界（manju-laoli / Seedance / V6）
+
+如果目录里同时有 **manju-laoli（`short-drama-director` + `sd-*`）** 或 **H3 V6 模板**，
+按目标平台二选一，不要混：
+
+| 交付目标 | 谁负责 | 本 skill 做什么 |
+|---|---|---|
+| Seedance 2.5/2.0 投喂稿 | manju `sd-feed-engine`（`图N`、七段式） | 不接管；不要写 `@图片N` |
+| DirectorDeck 剧本导入 | 本 skill（`@图片N`、第N段） | 只做导入格式与校验 |
+| H3 V6 提示词本体 | V6 模板 / 上游创作 | 只有要导入 DirectorDeck 时才解析/转换 |
+| 同时要 Seedance + DirectorDeck | 上游创作 + 两个交付层 | 出两份文件，明确标注，不混编号 |
+
+硬冲突只有一条：**manju `sd-feed-engine` 明确禁用 `@图片N`，DirectorDeck 又必须用 `@图片N`。**
+所以同一份稿只能服务一个平台；两边都要就拆成两份。
+
+- manju 的五道前置锁、六阶段编剧链、五席圆桌、分镜/打戏剧情——全部归 manju，本 skill 不重复、不覆盖、不代答；
+- manju `sd-script-engine` 的“外来剧本润色层”在上游完成；本 skill 只消费结果，不重复补表演层；
+- `图N` 和 `@图片N` **不能默认等同**；需要映射时先让用户确认对照表；
+- H3 V6 模板的创作规则归模板；本 skill 只保证导入器能解析（段头/`<d>`/`<Picture N>`/秒数/段数上限）。
+
+详细对照与故障排查见 `references/platform-compatibility.md`。
 
 ## 三、工作模式
 
@@ -139,6 +161,8 @@ python skills/directordeck-screenplay-bridge/scripts/validate_screenplay.py <剧
 - [ ] 对白行都符合 `角色：台词`，动作行没有被写成对白；
 - [ ] 台词数量/长度与段长匹配；
 - [ ] `@图片N` 都在 1–9 且是用户确认过的槽；
+- [ ] 没有和 Seedance 的 `图N` / `@CHR-` 等编号混用；
+- [ ] 没有把 manju 的七段式/15 秒分段规则套到 DirectorDeck 稿上；
 - [ ] 没有 Markdown 围栏、分析、创作说明；
 - [ ] 与其他 skill 的设定、角色、结局没有冲突；
 - [ ] 导入节点 `format=自动识别` 时能被正确识别（JSON / V6 / DD 文本）。
