@@ -1,4 +1,4 @@
-"""DirectorDeck 外部剧本 skill 的结构/共存/校验器单测（不依赖 ComfyUI）。"""
+"""DirectorDeck 剧本工坊 skill 的结构/交付/校验器单测（不依赖 ComfyUI）。"""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ import unittest
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SKILLS = os.path.join(REPO, "skills")
-SKILL_DIR = os.path.join(SKILLS, "directordeck-screenplay-bridge")
+SKILL_DIR = os.path.join(SKILLS, "directordeck-screenplay-studio")
 SKILL_FILE = os.path.join(SKILL_DIR, "SKILL.md")
 VALIDATOR = os.path.join(SKILL_DIR, "scripts", "validate_screenplay.py")
 
@@ -25,8 +25,7 @@ def read_frontmatter(path: str) -> dict:
     data = {}
     for line in match.group(1).splitlines():
         key, _, value = line.partition(":")
-        value = value.strip().strip('"').strip("'")
-        data[key.strip()] = value
+        data[key.strip()] = value.strip().strip('"').strip("'")
     return data
 
 
@@ -86,13 +85,13 @@ VALID_V6 = """【第1段｜5秒】
 class SkillStructureTest(unittest.TestCase):
     def test_frontmatter_and_unique_name(self):
         meta = read_frontmatter(SKILL_FILE)
-        self.assertEqual(meta.get("name"), "directordeck-screenplay-bridge")
-        # Agent Skills 规范：小写字母/数字/连字符，避免和其他 skill 冲突。
+        self.assertEqual(meta.get("name"), "directordeck-screenplay-studio")
         self.assertRegex(meta["name"], r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
         self.assertLessEqual(len(meta["name"]), 64)
-        self.assertTrue(meta.get("description", "").startswith("把任意来源的剧本草稿"))
-        self.assertIn("DirectorDeck", meta["description"])
-        self.assertIn("不接管", meta["description"])
+        desc = meta.get("description", "")
+        self.assertIn("DirectorDeck", desc)
+        self.assertIn("不输出 Seedance", desc)
+        self.assertIn("剧本导入", desc)
 
         names = []
         if os.path.isdir(SKILLS):
@@ -105,31 +104,35 @@ class SkillStructureTest(unittest.TestCase):
     def test_required_files_exist(self):
         for relative in (
             "SKILL.md",
-            "references/directordeck-formats.md",
-            "references/coexistence-rules.md",
-            "references/platform-compatibility.md",
-            "references/handoff-schema.md",
+            "NOTICE.md",
+            "LICENSE",
+            "LICENSE-manju-laoli",
+            "references/short-drama-craft.md",
+            "references/directordeck-delivery.md",
+            "references/qc-checklist.md",
             "scripts/validate_screenplay.py",
         ):
             self.assertTrue(os.path.isfile(os.path.join(SKILL_DIR, relative)), relative)
 
-    def test_skill_declares_non_conflict_contract(self):
+    def test_skill_has_directordeck_delivery_contract(self):
         text = open(SKILL_FILE, encoding="utf-8").read()
-        for phrase in ("共存契约", "不接管世界观", "泛泛的", "不改写", "不要使用本 skill"):
+        for phrase in ("DirectorDeck", "六阶段", "一段一个事件", "第N段（X秒）",
+                       "@图片N", "validate_screenplay.py", "M16"):
             self.assertIn(phrase, text)
-        # 和实际套装（manju-laoli/Seedance/V6）的边界必须写清楚，避免同时加载时互相覆盖。
-        for phrase in ("manju-laoli", "sd-feed-engine", "@图片N", "图N", "二选一"):
+        # 明确排除 Seedance 投喂格式，避免两个平台混用。
+        for phrase in ("不输出 Seedance", "图N", "二选一"):
             self.assertIn(phrase, text)
-        # 不能自称通用编剧规则，避免和创作 skill 抢触发。
-        self.assertNotIn("你是短剧/漫剧编剧", text)
 
-    def test_platform_compatibility_reference(self):
-        path = os.path.join(SKILL_DIR, "references", "platform-compatibility.md")
-        text = open(path, encoding="utf-8").read()
-        for phrase in ("sd-feed-engine", "@图片N", "图N", "Seedance", "H3 V6", "二选一"):
-            self.assertIn(phrase, text)
-        # 不能把两个平台的编号混成一条规则。
-        self.assertIn("不能默认等同", text)
+    def test_notice_preserves_attribution(self):
+        notice = open(os.path.join(SKILL_DIR, "NOTICE.md"), encoding="utf-8").read()
+        for phrase in ("MIT", "漫剧老李", "V6", "Seedance", "图N"):
+            self.assertIn(phrase, notice)
+        self.assertTrue(os.path.getsize(os.path.join(SKILL_DIR, "LICENSE")) > 1000)
+        self.assertTrue(os.path.getsize(os.path.join(SKILL_DIR, "LICENSE-manju-laoli")) > 500)
+
+    def test_old_bridge_removed(self):
+        self.assertFalse(os.path.isdir(os.path.join(SKILLS, "directordeck-screenplay-bridge")),
+                         "旧 bridge skill 应已合并移除，避免双 DirectorDeck skill 抢触发")
 
     def test_no_duplicate_in_home_skill_dirs(self):
         meta = read_frontmatter(SKILL_FILE)

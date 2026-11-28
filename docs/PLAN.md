@@ -50,6 +50,7 @@
 | **0.12.0**（✅） | 完整工作流 M16：外部剧本 + 素材自动匹配 → 两段生成 → 手动合并 → 二次处理成片（二采+RelayVSR），画布一键打开 | UI round-trip PASS；148 单测；真机跑通整条链 |
 | **0.13.0**（✅） | 独立 agent skill `directordeck-screenplay-bridge`：窄触发、与其他创作 skill 共存、只做导入格式/分段/素材槽；附独立校验器 | 159 单测；skill 结构/唯一命名/用户目录无重名；校验器 DD/JSON/V6 正反例 |
 | **0.13.1**（✅） | 对 `F:\AI-Video\剧本生成` 做冲突审计：与 manju-laoli/V6 无重名；新增 platform-compatibility；按目标平台二选一；同步外部副本 | 160 单测；外部副本校验器通过；无名称/文件冲突 |
+| **0.14.0**（✅） | 合并重构为单一 `directordeck-screenplay-studio`：创作+分段+台词/镜头+资产槽+导入格式+质检；移除旧 bridge；外部目录同步 | 161 单测；校验器三格式正反例；来源/许可 NOTICE |
 
 ## 工程约定
 

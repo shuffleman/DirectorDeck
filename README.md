@@ -184,25 +184,26 @@ ComfyUI 节点库：**AI 短剧导演台**。把「模型 + 素材 + 剧本 + �
 画布示例：`examples/ui/DirectorDeck_M13_剧本导入.json`；
 想直接从剧本走到最终成片，用 `examples/ui/DirectorDeck_M16_完整工作流.json`。
 
-### 7. 外部剧本 skill（和别的 skill 一起写剧本）
+### 7. 外部剧本 skill（DirectorDeck 专用剧本工坊）
 
-`skills/directordeck-screenplay-bridge/` 是一个**独立 agent skill**（不参与 ComfyUI 节点运行），
-用作“创作 skill → DirectorDeck 导入格式”的交付适配层：
+`skills/directordeck-screenplay-studio/` 是一个**独立 agent skill**（不参与 ComfyUI 节点运行），
+把创作、分段、台词/镜头、资产槽、导入格式和质检合并成一份，专供 DirectorDeck：
 
-- 其他短剧/漫剧/小说/分镜 skill 负责题材、人物、剧情、文风；
-- 本 skill 只负责分段、段长、画面/台词结构、`@图片N` 素材槽和导入格式校验；
-- 触发词很窄：只有明确提到 DirectorDeck / 剧本导入 / `@图片N` / H3 V6 才启用，
-  普通的“写剧本/写小说”不会抢触发；
+- 输入：创意 / 小说 / 大纲 / 外部剧本；
+- 输出：可直接粘贴进 `DirectorDeck_ScriptImport` 的 DirectorDeck 文本 / JSON / H3 V6；
+- 覆盖：短剧结构、钩子/升级/反转、人物与资产圣经、5 秒段写法、镜头/动作连续性、
+  二采前的成片规划、素材槽与 TTS/锁音衔接；
+- 触发很窄：只认 DirectorDeck / 剧本导入 / `@图片N` / 分段生成 / 锁音；
 - 自带独立校验器（纯标准库，不依赖 ComfyUI）：
-  `python skills/directordeck-screenplay-bridge/scripts/validate_screenplay.py 剧本.txt --format auto`。
+  `python skills/directordeck-screenplay-studio/scripts/validate_screenplay.py 剧本.txt --format auto`。
 
-已对 `F:\AI-Video\剧本生成` 里的 **manju-laoli 套装 + H3 V6 模板**做过冲突审计：
-无重名/无同路径文件；唯一平台级差异是 `sd-feed-engine` 用 `图N` 且禁用 `@图片N`，
-DirectorDeck 必须用 `@图片N`——按交付目标二选一，两边都要就拆两份。
-详见 [skills/README.md](skills/README.md) 与
-`skills/directordeck-screenplay-bridge/references/platform-compatibility.md`。
+它**取代**了旧的 `directordeck-screenplay-bridge`（已合并移除），避免两个 DirectorDeck skill 抢触发。
+对 `F:\AI-Video\剧本生成` 里的 **manju-laoli 套装 + H3 V6 模板**保持边界：
+Seedance 投喂/`图N`/七段式用 manju，DirectorDeck 导入/`@图片N` 用本 skill；两边都要就拆两份。
+创作规则部分改编自 manju-laoli（MIT），来源与许可见
+`skills/directordeck-screenplay-studio/NOTICE.md`。
 
-详细说明、冲突裁决和安装方式见 [skills/README.md](skills/README.md)。
+安装、用法、目录结构见 [skills/README.md](skills/README.md)。
 
 ## 文档
 

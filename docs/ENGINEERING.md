@@ -61,7 +61,7 @@ python tools\run_example.py examples\m1_single_segment_api.json --server http://
 python tools/gen_examples.py            # 生成 examples/*.json
 python tools/make_ui_workflows.py 8189  # 生成 examples/ui/*.json 并做 UI->API round-trip 校验
 node --check director_deck/web/directordeck.js
-python skills/directordeck-screenplay-bridge/scripts/validate_screenplay.py 剧本.txt --format auto
+python skills/directordeck-screenplay-studio/scripts/validate_screenplay.py 剧本.txt --format auto
 ```
 
 ## 4. 历史验证数据（真机 8189，RTX 5070 12G）

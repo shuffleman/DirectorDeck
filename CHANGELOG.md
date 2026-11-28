@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.14.0 — 重构为单一 DirectorDeck 剧本工坊 skill（2026-11-28）
+
+### 变更
+- 把原来的 `directordeck-screenplay-bridge` + manju-laoli 中与 DirectorDeck 相关的创作规则
+  + H3 V6 格式，**重构成一份新 skill**：`skills/directordeck-screenplay-studio/`；
+- 单 skill 覆盖：创意/小说/大纲/外部剧本 → 故事脊柱 → 人物与资产圣经 → 分段计划 →
+  正式剧本 → 台词口语化/镜头动作/连续性 → 导入格式 → 质检 → M13/M16 画布接法；
+- 文件：
+  - `SKILL.md`：触发、DirectorDeck 前置锁、六阶段流程、5 秒段硬写法、禁止事项；
+  - `references/short-drama-craft.md`：短剧结构/台词/镜头/武戏/连续性；
+  - `references/directordeck-delivery.md`：文本/JSON/H3 V6 契约、素材槽、TTS、画布接法；
+  - `references/qc-checklist.md`：交付前逐项检查；
+  - `scripts/validate_screenplay.py`：独立校验器；
+  - `NOTICE.md` / `LICENSE-manju-laoli`：MIT 来源与改编范围说明。
+- **移除旧 `directordeck-screenplay-bridge`**（仓库与外部安装目录），避免两个 DirectorDeck skill 抢触发；
+  旧文件保留在 git 历史中。
+- 明确平台边界：Seedance 投喂/`图N`/七段式用 manju-laoli；DirectorDeck 导入/`@图片N` 用本 skill；
+  两边都要就拆两份，不混编号。
+- 同步到实际目录 `F:\AI-Video\剧本生成\directordeck-screenplay-studio`。
+
+### 验证
+- 单测 **161 个全绿**；skill 结构/唯一命名/旧 bridge 已移除/用户目录无重名；
+- 校验器对 DirectorDeck 文本 / JSON / H3 V6 正例通过，越界/断号/代码围栏/坏 JSON 报错；
+- 外部安装副本与仓库文件 hash 一致，无 `__pycache__`。
+
 ## 0.13.1 — 剧本 skill 与 manju-laoli / H3 V6 的冲突审计（2026-11-28）
 
 ### 变更
