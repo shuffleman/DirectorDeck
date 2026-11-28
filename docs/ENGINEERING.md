@@ -27,6 +27,7 @@ examples/                # 可运行的 API 工作流示例
 examples/ui/             # 画布工作流（UI 0.4）
 tools/                   # 生成示例 / 真机跑示例 / 验证脚本
 tests/                   # 单测（stdlib unittest）
+skills/                  # 独立 agent skill（不参与 ComfyUI 运行；写剧本交付层）
 docs/                    # INSTALL / CONTRACTS / PLAN / UI_WORKFLOWS / ENGINEERING
 runs/                    # 本地真机运行记录（不入库）
 ```
@@ -60,6 +61,7 @@ python tools\run_example.py examples\m1_single_segment_api.json --server http://
 python tools/gen_examples.py            # 生成 examples/*.json
 python tools/make_ui_workflows.py 8189  # 生成 examples/ui/*.json 并做 UI->API round-trip 校验
 node --check director_deck/web/directordeck.js
+python skills/directordeck-screenplay-bridge/scripts/validate_screenplay.py 剧本.txt --format auto
 ```
 
 ## 4. 历史验证数据（真机 8189，RTX 5070 12G）

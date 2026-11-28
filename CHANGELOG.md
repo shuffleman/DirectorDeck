@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.13.0 — 独立剧本 skill：与其他 skill 共存的外部件交付层（2026-11-28）
+
+### 新增
+- 新增 `skills/directordeck-screenplay-bridge/`（标准 `SKILL.md` agent skill）：
+  - 把其他创作 skill / 用户给的剧本草稿整理成 `DirectorDeck_ScriptImport` 可导入的
+    DirectorDeck 文本 / JSON / H3 V6；
+  - **窄触发**：只在出现 DirectorDeck、剧本导入、`@图片N`、H3 V6 等交付信号时启用，
+    普通“写剧本/写小说”不抢触发；
+  - **共存契约**：创作内容（题材/角色/剧情/文风/结局）归其他 skill，本 skill 只负责分段、
+    段长、台词长度、素材槽和导入格式；格式冲突时拆段/拆句，不删剧情、不改角色；
+  - 附 `references/directordeck-formats.md`（三种格式精确契约）、`coexistence-rules.md`
+    （冲突裁决矩阵）、`handoff-schema.md`（交接字段）；
+  - 附独立校验器 `scripts/validate_screenplay.py`（纯标准库，不依赖 ComfyUI），
+    支持 DD 文本 / JSON / H3 V6 自动识别，检查段号、秒数、台词长度、素材槽越界、代码围栏等。
+- `skills/README.md` 说明安装、与创作 skill 的推荐流水线、为什么不会重名/抢触发。
+- 单测 **159 个全绿**（新增 skill 结构、唯一命名、无用户目录重名、校验器正反例）。
+
 ## 0.12.0 — 完整工作流 M16（剧本 → 素材匹配 → 两段生成 → 合并 → 二次处理成片）（2026-11-28）
 
 ### 新增

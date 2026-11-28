@@ -184,12 +184,27 @@ ComfyUI 节点库：**AI 短剧导演台**。把「模型 + 素材 + 剧本 + �
 画布示例：`examples/ui/DirectorDeck_M13_剧本导入.json`；
 想直接从剧本走到最终成片，用 `examples/ui/DirectorDeck_M16_完整工作流.json`。
 
+### 7. 外部剧本 skill（和别的 skill 一起写剧本）
+
+`skills/directordeck-screenplay-bridge/` 是一个**独立 agent skill**（不参与 ComfyUI 节点运行），
+用作“创作 skill → DirectorDeck 导入格式”的交付适配层：
+
+- 其他短剧/漫剧/小说/分镜 skill 负责题材、人物、剧情、文风；
+- 本 skill 只负责分段、段长、画面/台词结构、`@图片N` 素材槽和导入格式校验；
+- 触发词很窄：只有明确提到 DirectorDeck / 剧本导入 / `@图片N` / H3 V6 才启用，
+  普通的“写剧本/写小说”不会抢触发；
+- 自带独立校验器（纯标准库，不依赖 ComfyUI）：
+  `python skills/directordeck-screenplay-bridge/scripts/validate_screenplay.py 剧本.txt --format auto`。
+
+详细说明、冲突裁决和安装方式见 [skills/README.md](skills/README.md)。
+
 ## 文档
 
 | 文档 | 内容 |
 |---|---|
 | [docs/INSTALL.md](docs/INSTALL.md) | 安装、模型清单、首次跑通、常见问题 |
 | [docs/UI_WORKFLOWS.md](docs/UI_WORKFLOWS.md) | 13 个画布工作流怎么用、节点怎么接 |
+| [skills/README.md](skills/README.md) | 独立 agent skill：和其他 skill 一起生成 DirectorDeck 剧本、格式校验 |
 | [docs/CONTRACTS.md](docs/CONTRACTS.md) | 字段级契约、错误码、缓存/指纹规则 |
 | [docs/PLAN.md](docs/PLAN.md) | 里程碑与设计决策 |
 | [docs/ENGINEERING.md](docs/ENGINEERING.md) | 开发与维护说明（仓库结构、本地验证、发布流程） |
