@@ -36,7 +36,7 @@ ComfyUI 节点库：**AI 短剧导演台**。把「模型 + 素材 + 剧本 + �
 | `DirectorDeck_FramePlanner` | 整条链的 17k+5 帧计划（head/delivery/sample/时间轴） |
 | `DirectorDeck_DirectorTake` | 按段生成；自动续写、接缝修正、画面级抽卡缓存（`cache_mode`） |
 | `DirectorDeck_SeamFixer` | 独立接缝修正（也可单独修已有两段） |
-| `DirectorDeck_FinalCut` | 多段合并：裁衔接头、拼音轨、写 manifest；可选源音轨无损混流 + 边界交叉淡化 |
+| `DirectorDeck_FinalCut` | 多段合并（**段数不限**，默认 4 组输入、面板可继续加）：自动裁衔接头、拼音轨、写 manifest；可选源音轨无损混流 + 边界交叉淡化 |
 | `DirectorDeck_SegmentCache` | 抽卡记录（status/store/clear，只存元数据） |
 | `DirectorDeck_VoiceLock` | 数字人锁音器：角色→音频槽+时间轴起点（+增益/优先级）；多角色 ducking / 混音 |
 | `DirectorDeck_TTSBooth` | TTS 台词表：一张台词表 → 多角色配音 + 可锁音 CAST（可选依赖 Breeze-TTS-2） |

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 
 import folder_paths
@@ -21,7 +22,9 @@ import torch
 from ..adapters import segment_store
 from ..core.types import CATEGORY, FPS, TYPE_MANIFEST, TYPE_SEGMENT
 
-MAX_SEGMENTS = 4  # M2 先支持 4 段（15~20 秒），M4 再扩到任意段
+# 画布默认只声明 4 组输入（够用且不乱）；更多段由前端“动态加输入”产生
+# segment_5/images_5/audio_5...，ComfyUI 会把它们作为额外 kwargs 传进来。
+MAX_SEGMENTS = 4  # 默认声明的槽位数，不是上限
 
 
 class DirectorDeckFinalCut:
@@ -31,7 +34,8 @@ class DirectorDeckFinalCut:
     FUNCTION = "merge"
     RETURN_TYPES = ("IMAGE", "AUDIO", TYPE_MANIFEST)
     RETURN_NAMES = ("images", "audio", "manifest")
-    DESCRIPTION = ("把最多 4 段按顺序合并：自动裁掉衔接头，音轨按同样规则裁剪后拼接。")
+    DESCRIPTION = ("把任意多段按顺序合并：默认画布声明 4 组输入，>4 由前端“合并器 +1 段输入”"
+                   "动态添加（后端 **kwargs 接收）；自动裁衔接头、拼音轨、写 manifest。")
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -45,6 +49,8 @@ class DirectorDeckFinalCut:
             optional[f"segment_{index}"] = (TYPE_SEGMENT, {"tooltip": f"第 {index} 段元数据"})
             optional[f"images_{index}"] = ("IMAGE", {"tooltip": f"第 {index} 段画面"})
             optional[f"audio_{index}"] = ("AUDIO", {"tooltip": f"第 {index} 段音轨"})
+        # 注意：上面只是“画布默认槽位”。前端可以用面板按钮动态加 segment_5...，
+        # merge() 会把它们当额外 kwargs 收进来，所以段数没有上限（只受显存限制）。
         # 清单落盘开关：想留档就开，只想快速看片就关。
         optional["save_manifest"] = ("BOOLEAN", {"default": True,
                                                  "tooltip": "把合并清单写到 output/DirectorDeck/manifests/"})
@@ -100,15 +106,31 @@ class DirectorDeckFinalCut:
         pieces_images = []
         pieces_audio = []
         metas = []
-        first = True
-        # 按 1..4 顺序收集，没接的段直接跳过（允许只合 1~3 段）。
-        for index in range(1, MAX_SEGMENTS + 1):
-            segment = segment_1 if index == 1 else kwargs.get(f"segment_{index}")
-            images = images_1 if index == 1 else kwargs.get(f"images_{index}")
-            audio = audio_1 if index == 1 else kwargs.get(f"audio_{index}")
-            if segment is None or images is None or audio is None:
+
+        # 收集所有“段”：默认的 segment_1 + 声明的 2..4 + 前端动态加的 5...
+        entries: dict[int, tuple] = {1: (segment_1, images_1, audio_1)}
+        for key, value in kwargs.items():
+            match = re.match(r"^segment_(\d+)$", str(key))
+            if not match:
                 continue
-            head = 0 if first else int(segment.get("head") or 0)
+            index = int(match.group(1))
+            entries[index] = (value, kwargs.get(f"images_{index}"),
+                              kwargs.get(f"audio_{index}"))
+        ordered = []
+        skipped = []
+        for index in sorted(entries):
+            segment, images, audio = entries[index]
+            if segment is None or images is None or audio is None:
+                skipped.append(index)
+                continue
+            ordered.append((index, segment, images, audio))
+        if not ordered:
+            raise ValueError("FinalCut 至少需要连接一段（segment_1/images_1/audio_1）")
+        if skipped:
+            print(f"[DirectorDeck] 合并器跳过不完整的段：{skipped}（segment/images/audio 要成组接）")
+
+        for index, segment, images, audio in ordered:
+            head = 0 if not pieces_images else int(segment.get("head") or 0)
             delivery = int(images.shape[0]) - head
             # 画面：丢头帧，留 delivery（最后一帧就是段尾，不用再裁尾巴）。
             pieces_images.append(images[head:])
@@ -133,7 +155,6 @@ class DirectorDeckFinalCut:
                 "audio_source": "source" if source_audio is not None else "decoded",
                 "seam": segment.get("seam"),
             })
-            first = False
 
         if not pieces_images:
             raise ValueError("FinalCut 至少需要连接一段（segment_1/images_1/audio_1）")
@@ -168,6 +189,7 @@ class DirectorDeckFinalCut:
         manifest = {
             "schema": "DIRECTOR_MANIFEST@1",
             "segments": metas,
+            "segment_count": len(metas),
             "total_frames": int(images.shape[0]),
             "duration": round(float(images.shape[0]) / FPS, 3),
             "fps": FPS,

@@ -51,6 +51,9 @@ const I18N = {
     builtGenerators: "已按剧本创建 N 段视频生成器",
     builtOutput: "已补全 FinalCut / 视频输出节点",
     noTakes: "画布上没有“视频生成器”，先放一个或点“按剧本建生成器”",
+    addCutInput: "合并器 +1 段输入",
+    needCut: "请先选中“多段合并器”（或先在画布上放一个）",
+    cutInputAdded: "已给合并器加一组段输入",
     canvasLocked: "分辨率预设生效：宽/高自动同步；要手填宽高请把“分辨率”改成“自定义（用宽高）”",
     helpText:
       "用法：\n1) 先放好 模型加载器 / 全局配置 / 剧本加载器 / 视频生成器；\n2) 选中某个“视频生成器”，点“添加下一段”自动接链；\n3) 想单独换素材/音色/剧本，点对应按钮，会把 policy 自动切到 replace；\n4) 想重抽某段，选中它点“重抽选中段”。",
@@ -87,6 +90,9 @@ const I18N = {
     builtGenerators: "Created N Take nodes from the script",
     builtOutput: "FinalCut / video output nodes created",
     noTakes: "No DirectorTake on canvas. Add one first, or click 'Build Take chain'",
+    addCutInput: "FinalCut +1 segment",
+    needCut: "Select a FinalCut node first (or add one to the canvas)",
+    cutInputAdded: "Added one segment input group to FinalCut",
     canvasLocked: "Resolution preset is active: width/height follow it. Choose '自定义（用宽高）' to edit them manually.",
     helpText:
       "Workflow:\n1) Place ModelLoader / Config / ScriptDesk / DirectorTake;\n2) Select a DirectorTake and click 'Add next segment' to chain it;\n3) Click override buttons to add assets/voice/brief nodes (policy auto = replace);\n4) Select a segment and click 'Reroll' to re-generate with a new seed.",
@@ -478,16 +484,17 @@ function buildOutputChain() {
   takes = takes.slice().sort((a, b) => {
     return Number(widgetValue(a, "segment_index") || 0) - Number(widgetValue(b, "segment_index") || 0);
   });
-  const used = takes.slice(0, 4);
   const last = takes[takes.length - 1];
   const x = last.pos[0] + (last.size ? last.size[0] : 360) + 80;
   const y = last.pos[1];
 
   const cut = createNode(PREFIX + "FinalCut", [x, y]);
+  // 段数没有上限：Take 有几段就给 FinalCut 补几组动态输入（5、6、7...）。
+  ensureCutInputs(cut, takes.length);
   setWidget(cut, "save_manifest", true);
   setWidget(cut, "audio_from_source", true);
   setWidget(cut, "audio_crossfade_ms", 80);
-  used.forEach((take, index) => {
+  takes.forEach((take, index) => {
     const suffix = `_${index + 1}`;
     linkNodes(take, "segment", cut, "segment" + suffix);
     linkNodes(take, "images", cut, "images" + suffix);
@@ -505,6 +512,59 @@ function buildOutputChain() {
 
   app.graph.setDirtyCanvas(true, true);
   toast(`${t("done")}: ${t("builtOutput")}`);
+}
+
+// ---------------------------------------------------- 合并器动态段输入（无上限）
+// FinalCut 默认只声明了 4 组输入；这里可以继续加 segment_5/images_5/audio_5...
+// 后端 merge(**kwargs) 会把它们收进来，所以段数只受显存限制。
+const CUT = PREFIX + "FinalCut";
+
+function selectedCut() {
+  const selected = app.canvas?.selected_nodes || {};
+  for (const id of Object.keys(selected)) {
+    const node = selected[id];
+    if (node && node.type === CUT) return node;
+  }
+  const cuts = graphNodes(CUT);
+  return cuts.length ? cuts[cuts.length - 1] : null;
+}
+
+function cutInputCount(node) {
+  let count = 1;
+  for (const input of node.inputs || []) {
+    const match = /^(?:segment|images|audio)_(\d+)$/.exec(input.name || "");
+    if (match) count = Math.max(count, Number(match[1]));
+  }
+  return count;
+}
+
+function ensureCutInputs(node, target) {
+  const count = Math.max(1, Number(target) || 1);
+  for (let index = 1; index <= count; index += 1) {
+    for (const [prefix, type] of [["segment", "DIRECTOR_SEGMENT"], ["images", "IMAGE"], ["audio", "AUDIO"]]) {
+      const name = `${prefix}_${index}`;
+      if (!(node.inputs || []).some((input) => input.name === name)) {
+        node.addInput(name, type);
+      }
+    }
+  }
+  for (const input of node.inputs || []) {
+    const match = /^(segment|images|audio)_(\d+)$/.exec(input.name || "");
+    if (!match) continue;
+    const suffix = match[1] === "segment" ? "段" : match[1] === "images" ? "段画面" : "段音轨";
+    input.label = `第${match[2]}${suffix}`;
+    input.localized_name = input.label;
+  }
+  const width = node.size ? node.size[0] : 420;
+  node.size = [width, Math.max(node.size ? node.size[1] : 420, 140 + count * 62)];
+  app.graph.setDirtyCanvas(true, true);
+}
+
+function addCutInput() {
+  const cut = selectedCut();
+  if (!cut) return toast(t("needCut"), false);
+  ensureCutInputs(cut, cutInputCount(cut) + 1);
+  toast(`${t("done")}: ${t("cutInputAdded")}`);
 }
 
 // ------------------------------------------------------------------ 面板 UI
@@ -528,6 +588,7 @@ function buildPanel() {
     [() => t("addNext"), addNextSegment],
     [() => t("buildGen"), buildGeneratorsFromScript],
     [() => t("buildOutput"), buildOutputChain],
+    [() => t("addCutInput"), addCutInput],
     [() => t("addAssets"), () => addOverride("assets")],
     [() => t("addVoice"), () => addOverride("voice")],
     [() => t("addBrief"), () => addOverride("brief")],
@@ -720,6 +781,16 @@ function localizeNode(node) {
     }
   }
   if (node.type === "DirectorDeck_DirectorConfig") bindConfigCanvas(node);
+  if (node.type === "DirectorDeck_FinalCut") {
+    // 动态加的 segment_5... 也要有中文插头名（静态映射只覆盖到 4）。
+    for (const input of node.inputs || []) {
+      const match = /^(segment|images|audio)_(\d+)$/.exec(input.name || "");
+      if (!match) continue;
+      const suffix = match[1] === "segment" ? "段" : match[1] === "images" ? "段画面" : "段音轨";
+      input.label = `第${match[2]}${suffix}`;
+      input.localized_name = input.label;
+    }
+  }
 }
 
 // 分辨率预设和 backend core/frames.py 保持一致（只用于把宽高控件同步成预设值）。

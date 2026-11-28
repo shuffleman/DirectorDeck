@@ -49,7 +49,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "DirectorDeck_FramePlanner": "DirectorDeck · 帧计划器",
     "DirectorDeck_DirectorTake": "DirectorDeck · 视频生成器",
     "DirectorDeck_SeamFixer": "DirectorDeck · 接缝修正器",
-    "DirectorDeck_FinalCut": "DirectorDeck · 多段合并器",
+    "DirectorDeck_FinalCut": "DirectorDeck · 多段合并器（不限段数）",
     "DirectorDeck_SegmentCache": "DirectorDeck · 抽卡缓存",
     "DirectorDeck_VoiceLock": "DirectorDeck · 数字人锁音器",
     "DirectorDeck_TTSBooth": "DirectorDeck · TTS 台词表（多角色配音）",

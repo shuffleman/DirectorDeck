@@ -207,6 +207,19 @@ class ExampleTest(unittest.TestCase):
         self.assertEqual(second["inputs"]["continuity"], "latent_tail")
         self.assertIn("previous_segment", second["inputs"])
 
+    def test_m14_unlimited_merge(self):
+        graph = load("m14_unlimited_merge_api.json")
+        self._check(graph)
+        cut = next(n for n in graph.values()
+                   if n["class_type"] == "DirectorDeck_FinalCut")
+        # 5..N 段是动态输入（后端 **kwargs 接收），示例至少验证第 5 段
+        for name in ("segment_5", "images_5", "audio_5"):
+            self.assertIn(name, cut["inputs"])
+        for index in range(1, 6):
+            self.assertIn(f"segment_{index}", cut["inputs"])
+            self.assertIn(f"images_{index}", cut["inputs"])
+            self.assertIn(f"audio_{index}", cut["inputs"])
+
     def test_m7_crossfade(self):
         graph = load("m7_crossfade_api.json")
         self._check(graph)

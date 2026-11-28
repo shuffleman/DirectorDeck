@@ -748,6 +748,40 @@ def m13_import_chain() -> dict:
     return graph
 
 
+def m14_unlimited_merge() -> dict:
+    """M14 无限段合并示例：FinalCut 接 5 组段输入（第 5 组是“动态输入”）。
+
+    为了快速验证，5 组都接同一个生成器的输出（拼接逻辑和接 5 个不同生成器一样）；
+    前端面板“补全合并输出/合并器 +1 段输入”会按实际生成器数量动态加输入。
+    """
+    cfg = config_node()
+    cfg["inputs"]["resolution"] = "480p"
+    cfg["inputs"]["aspect_ratio"] = "16:9 横屏"
+    cut_inputs = {}
+    for index in range(1, 6):
+        cut_inputs[f"segment_{index}"] = ["10", 0]
+        cut_inputs[f"images_{index}"] = ["10", 1]
+        cut_inputs[f"audio_{index}"] = ["10", 2]
+    cut_inputs.update({"save_manifest": True, "audio_from_source": False,
+                       "audio_crossfade_ms": 80})
+    graph = {
+        "1": loader_node(),
+        "2": cfg,
+        "3": script_node(),
+        "10": take_node("10", "1", "2", "3"),
+        "40": {"class_type": "DirectorDeck_FinalCut", "inputs": cut_inputs},
+        "41": {"class_type": "CreateVideo",
+               "inputs": {"images": ["40", 0], "fps": 24.0, "audio": ["40", 1],
+                          "codec": "h264"}},
+        "42": {"class_type": "SaveVideo",
+               "inputs": {"video": ["41", 0], "filename_prefix": "DirectorDeck/M14_unlimited",
+                          "format": "auto", "codec": "auto"}},
+        "43": {"class_type": "SaveAudio",
+               "inputs": {"audio": ["40", 1], "filename_prefix": "DirectorDeck/M14_unlimited_mix"}},
+    }
+    return graph
+
+
 def main() -> int:
     os.makedirs(EXAMPLE_DIR, exist_ok=True)
     for name, graph in (("m1_single_segment_api", single()),
@@ -763,7 +797,8 @@ def main() -> int:
                         ("m9_tts_booth_api", m9_tts_booth()),
                         ("m10_tts_auto_api", m10_tts_auto()),
                         ("m11_tts_chain_api", m11_tts_chain()),
-                        ("m13_import_api", m13_import_chain())):
+                        ("m13_import_api", m13_import_chain()),
+                        ("m14_unlimited_merge_api", m14_unlimited_merge())):
         path = os.path.join(EXAMPLE_DIR, name + ".json")
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(graph, fh, ensure_ascii=False, indent=2)

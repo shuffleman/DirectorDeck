@@ -354,7 +354,7 @@ segment_fingerprint = "sha1:" + sha1(canonical_json({
 | 10 | `DirectorDeck_SeamFixer` | IMAGE + STRING | prev_images、cur_images、cur_head + optional: enabled、window、max_add、gain_limit |
 | 11 | `DirectorDeck_SegmentCache` | SEGMENT + STRING | segment、mode(status/store/clear)、scope（可选） |
 | 12 | `DirectorDeck_Refiner` | SEGMENT + IMAGE + AUDIO | bundle、segment、images、audio + optional: mode(latent_2nd/lanczos2x)、denoise、steps、sampler_name、scheduler、upscale |
-| 13 | `DirectorDeck_FinalCut` | IMAGE + AUDIO + MANIFEST | segment_1/images_1/audio_1（必填）+ segment_2..4/images_2..4/audio_2..4（可选）+ save_manifest、audio_from_source、audio_crossfade_ms（0.2.4） |
+| 13 | `DirectorDeck_FinalCut` | IMAGE + AUDIO + MANIFEST | segment_1/images_1/audio_1（必填）+ segment_2..4/images_2..4/audio_2..4（默认声明）+ **segment_5..N/images/audio（动态输入，经 `**kwargs` 接收，段数不限）** + save_manifest、audio_from_source、audio_crossfade_ms（0.2.4） |
 | 14 | `DirectorDeck_OutputLibrary`（可选） | path+FILE | segment/manifest、dir、naming |
 | 15 | `DirectorDeck_PromptSmith`（可选） | STRING | template/task、remote provider（默认关） |
 | 16 | `DirectorDeck_DirectorRunner`（M4，可选） | ALL | plan/config、run_mode |
