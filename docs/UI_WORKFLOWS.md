@@ -1,6 +1,6 @@
 # DirectorDeck 画布工作流说明
 
-> 11 个 UI 格式工作流在 `examples/ui/`，在 ComfyUI 里用 **Workflow → Open**（或直接拖进画布）打开。
+> 13 个 UI 格式工作流在 `examples/ui/`，在 ComfyUI 里用 **Workflow → Open**（或直接拖进画布）打开。
 > 节点参数在画布上显示中文；工作流文件里的字段名仍是英文（API/旧工作流兼容）。
 > 对应的 API 格式在 `examples/*.json`，两者逐输入校验一致（`tools/make_ui_workflows.py` 的 round-trip 校验）。
 
@@ -18,6 +18,16 @@
 | `DirectorDeck_M10_台词自动排期.json` | 不写起始秒，按句自动分段/自动排期 | 懒得算每句起点、想先跑起来 |
 | `DirectorDeck_M11_超长两段衔接.json` | 超长提醒 + 多段复用同一份 CAST 衔接 | 台词总长超过一段的时长 |
 | `DirectorDeck_M13_剧本导入.json` | 外部剧本导入 + 素材自动匹配 | 剧本在外部写、想一键建生成链 |
+| `DirectorDeck_M16_完整工作流.json` | 外部剧本 + 素材匹配 + 两段生成 + 手动合并 + 二次处理成片 | **想直接跑完整链路**：从剧本到最终 mp4 |
+
+## 完整工作流（M16）推荐操作顺序
+
+1. 打开 `DirectorDeck_M16_完整工作流.json`，在「模型加载器」里确认模型；
+   参考图 `11.png` / `睡衣.png` 换成你自己的（脚本里对应角色/场景会自动匹配）；
+2. 直接点 **运行**：两段视频生成器跑完，节点上可以逐个预览带音频的 mp4；
+3. 点合并器上的 **🎬 手动合并本片**；
+4. 点二次处理成片上的 **🎬 生成最终视频**：默认走“潜空间二采 + RelayVSR 2x”，
+   结果保存到 `output/DirectorDeck/final/`，节点上直接显示成片预览与 json 报告。
 
 ## 打开后先改什么
 
@@ -50,7 +60,8 @@
    把角色 → @图片N、段落 → 场景图、角色 → 音频槽都列出来（不想匹配就关 `match_assets`）；
 3. 画布上保留一个「视频生成器」当模板，选中「剧本导入」节点，点面板 **按剧本建生成器**：
    按 `segment_count` 自动创建 N 段、复制模型/配置/素材/音色接法、串 `previous_segment`；
-4. 再点 **补全合并输出**：自动生成 FinalCut（最多 4 段）+ CreateVideo + SaveVideo。
+4. 再点 **补全合并输出**：自动生成 FinalCut（段数不限，自动补齐动态输入）+ CreateVideo + SaveVideo；
+   需要二采/RelayVSR 时，再把 FinalCut 的 images/audio 接到「二次处理成片」节点。
 
 > 建链按钮只做“接线和参数”，不替你选模型；模型加载器/配置/素材的接法来自模板节点。
 

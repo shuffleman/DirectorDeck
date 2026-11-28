@@ -436,6 +436,7 @@ segment_fingerprint = "sha1:" + sha1(canonical_json({
 | `DirectorDeck_M10_台词自动排期.json` | `m10_tts_auto_api.json`（0.4.0） |
 | `DirectorDeck_M11_超长两段衔接.json` | `m11_tts_chain_api.json`（0.5.0） |
 | `DirectorDeck_M13_剧本导入.json` | `m13_import_api.json`（0.8.0） |
+| `DirectorDeck_M16_完整工作流.json` | `m16_complete_workflow_api.json`（0.12.0，剧本→素材匹配→两段生成→手动合并→二次处理成片） |
 
 生成与校验：`python tools/make_ui_workflows.py [server]` —— 从运行中 ComfyUI 拉 `object_info`，
 按真实控件顺序生成 `widgets_values`，再用 `ui_to_api()` 反向还原并与 API 示例逐输入比对

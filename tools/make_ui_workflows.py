@@ -864,6 +864,92 @@ def make_m13_import(oi):
     return build_ui(oi, nodes, groups, "DirectorDeck_M13_剧本导入")
 
 
+def make_m16_complete(oi):
+    """M16：完整工作流（外部剧本 + 素材匹配 + 两段生成 + 手动合并 + 二次处理成片）。"""
+    external_script = ("第1段（5秒）\n"
+                       "[画面] 雨夜，女主撑着伞站在老宅台阶下，男主从门内走出。\n"
+                       "女主：你终于回来了。\n"
+                       "男主：这十年，我一直在找你。\n\n"
+                       "第2段（5秒）\n"
+                       "[画面] 两人在雨中对视，镜头缓慢推近女主的脸。\n"
+                       "女主：先进屋吧。")
+    relay_model = "RelayVSR\\relayvsr_x2_lightx2v_int8_convrot.safetensors"
+    relay_vae = "RelayVSR\\relayvsr_flash_vae_x2_fp32.safetensors"
+    cfg = config_node()
+    cfg["values"]["resolution"] = "480p"
+    cfg["values"]["aspect_ratio"] = "16:9 横屏"
+    nodes = [
+        loader_node(), cfg,
+        dict(id=6, type="LoadImage", pos=[-20, 1120], size=[320, 340],
+             values={"image": "11.png"}, title="参考图 1"),
+        dict(id=7, type="LoadImage", pos=[320, 1120], size=[320, 340],
+             values={"image": "睡衣.png"}, title="参考图 2"),
+        dict(id=8, type="DirectorDeck_AssetShelf", pos=[-20, 1480], size=[640, 300],
+             links_in={"image_1": (6, 0), "image_2": (7, 0)},
+             title="素材库（2 张参考图）"),
+        dict(id=3, type="DirectorDeck_ScriptImport", pos=[420, 0], size=[480, 780],
+             values={"script": external_script, "format": "自动识别",
+                     "segment_seconds": 5.0, "match_assets": True,
+                     "match_scenes": True, "min_score": 0.55},
+             links_in={"assets": (8, 0)},
+             title="剧本导入（外部剧本 + 素材自动匹配）"),
+        dict(id=10, type="DirectorDeck_DirectorTake", pos=[960, 0], size=[380, 520],
+             values={"segment_index": 1, "bundle_policy": "provided",
+                     "config_policy": "inherit", "assets_policy": "replace",
+                     "brief_policy": "inherit", "cast_policy": "inherit",
+                     "continuity": "start", "seed": 0, "cache_mode": "auto"},
+             links_in={"bundle": (1, 0), "config": (2, 0), "script": (3, 0),
+                       "assets": (8, 0)},
+             title="视频生成器（第 1 段）"),
+        dict(id=11, type="DirectorDeck_DirectorTake", pos=[960, 560], size=[380, 540],
+             values={"segment_index": 2, "bundle_policy": "inherit",
+                     "config_policy": "inherit", "assets_policy": "inherit",
+                     "brief_policy": "inherit", "cast_policy": "inherit",
+                     "continuity": "latent_tail", "seed": 1002, "cache_mode": "auto"},
+             links_in={"bundle": (1, 0), "config": (2, 0), "script": (3, 0),
+                       "assets": (8, 0), "previous_segment": (10, 0)},
+             title="视频生成器（第 2 段，latent 续写）"),
+        dict(id=40, type="DirectorDeck_FinalCut", pos=[1400, 0], size=[420, 680],
+             values={"save_manifest": True, "audio_from_source": False,
+                     "audio_crossfade_ms": 80, "merge_mode": "手动", "merge_token": 0},
+             links_in={"segment_1": (10, 0), "images_1": (10, 1), "audio_1": (10, 2),
+                       "segment_2": (11, 0), "images_2": (11, 1), "audio_2": (11, 2)},
+             title="多段合并器（点“手动合并本片”）"),
+        dict(id=50, type="DirectorDeck_FinalRefine", pos=[1400, 740], size=[500, 980],
+             values={"mode": "潜空间二采 + RelayVSR 2x",
+                     "prompt": "电影感，细节清晰，自然皮肤质感，稳定光影，高质量成片",
+                     "seed": 0, "latent_denoise": 0.2, "latent_steps": 4,
+                     "latent_sampler": "er_sde", "latent_scheduler": "beta",
+                     "refiner_lora": "none", "refiner_lora_strength": 1.0,
+                     "relay_model": relay_model, "relay_vae": relay_vae,
+                     "relay_detail": 0.5, "relay_lock_exposure": True,
+                     "lanczos_scale": 2.0, "target_width": 0, "target_height": 0,
+                     "free_vram": True, "save_video": True,
+                     "output_dir": "DirectorDeck", "filename_prefix": "complete",
+                     "run_mode": "手动", "run_token": 0},
+             links_in={"bundle": (1, 0), "images": (40, 0), "audio": (40, 1),
+                       "segment": (11, 0), "config": (2, 0)},
+             title="二次处理成片（点“生成最终视频”）"),
+        dict(id=60, type="Note", pos=[420, 900], size=[800, 360],
+             text="【M16 完整工作流】\n"
+                  "推荐顺序：\n"
+                  "1) 直接排队：两段生成器跑完，节点上可预览 mp4；\n"
+                  "2) 点合并器上的“🎬 手动合并本片”；\n"
+                  "3) 点二次处理成片上的“🎬 生成最终视频”（默认二采 + RelayVSR 2x）。\n\n"
+                  "外部剧本可整段替换成你自己的；素材库接参考图后会自动匹配角色/场景。\n"
+                  "最终视频保存到 output/DirectorDeck/final/，旁边有同名 json 报告。"),
+    ]
+    groups = [
+        {"title": "模型 / 配置 / 素材", "bounding": [-60, -20, 700, 1820],
+         "color": "#3f789e", "font_size": 22, "flags": {}},
+        {"title": "外部剧本 + 自动匹配", "bounding": [400, -20, 500, 840],
+         "color": "#8A8", "font_size": 22, "flags": {}},
+        {"title": "两段生成 / 手动合并 / 二次处理成片", "bounding": [920, -20, 1100, 1780],
+         "color": "#b58b2a", "font_size": 22, "flags": {}},
+    ]
+    return build_ui(oi, nodes, groups, "DirectorDeck_M16_完整工作流")
+
+
 def make_m1(oi):
     nodes = [
         loader_node(), config_node(), script_node(),
@@ -1124,6 +1210,7 @@ WORKFLOWS = [
     ("m10_tts_auto_api", make_m10_auto),
     ("m11_tts_chain_api", make_m11_chain),
     ("m13_import_api", make_m13_import),
+    ("m16_complete_workflow_api", make_m16_complete),
 ]
 
 

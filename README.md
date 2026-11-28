@@ -47,7 +47,9 @@ ComfyUI 节点库：**AI 短剧导演台**。把「模型 + 素材 + 剧本 + �
 ## 快速开始
 
 1. **安装**：把仓库目录联接/复制到 `<ComfyUI>/custom_nodes/DirectorDeck`，重启 ComfyUI（详见 [docs/INSTALL.md](docs/INSTALL.md)）。
-2. **打开画布工作流**：`examples/ui/DirectorDeck_M1_单段闭环.json` → 在「模型加载器」里选模型 → 运行。
+2. **打开画布工作流**：想直接跑完整链路，用 `examples/ui/DirectorDeck_M16_完整工作流.json`
+   （剧本导入 → 素材匹配 → 两段生成 → 手动合并 → 二次处理成片）；只想先试单镜头，用
+   `examples/ui/DirectorDeck_M1_单段闭环.json` → 在「模型加载器」里选模型 → 运行。
 3. **多段/数字人风格**：换下面的画布工作流；右下角「DirectorDeck 导演台」面板可一键加段/加覆盖/重抽。
 
 | 画布工作流 | 说明 |
@@ -64,6 +66,7 @@ ComfyUI 节点库：**AI 短剧导演台**。把「模型 + 素材 + 剧本 + �
 | `DirectorDeck_M10_台词自动排期.json` | 不写起始秒：按句自动分段 + 自动排期 → 锁音 |
 | `DirectorDeck_M11_超长两段衔接.json` | 台词超长提醒 + 两段复用同一份 CAST 自动衔接 |
 | `DirectorDeck_M13_剧本导入.json` | 外部剧本导入 + 素材自动匹配 + 两段链生成 |
+| `DirectorDeck_M16_完整工作流.json` | **完整链路**：外部剧本 + 素材匹配 → 两段生成 → 手动合并 → 二次处理成片（二采 + RelayVSR），直接出最终 mp4 |
 
 ## 使用说明
 
@@ -178,14 +181,15 @@ ComfyUI 节点库：**AI 短剧导演台**。把「模型 + 素材 + 剧本 + �
    自动串 `previous_segment`，后续段用 latent 续写）；再点 **补全合并输出** →
    自动生成 FinalCut + CreateVideo + SaveVideo。
 
-画布示例：`examples/ui/DirectorDeck_M13_剧本导入.json`。
+画布示例：`examples/ui/DirectorDeck_M13_剧本导入.json`；
+想直接从剧本走到最终成片，用 `examples/ui/DirectorDeck_M16_完整工作流.json`。
 
 ## 文档
 
 | 文档 | 内容 |
 |---|---|
 | [docs/INSTALL.md](docs/INSTALL.md) | 安装、模型清单、首次跑通、常见问题 |
-| [docs/UI_WORKFLOWS.md](docs/UI_WORKFLOWS.md) | 9 个画布工作流怎么用、节点怎么接 |
+| [docs/UI_WORKFLOWS.md](docs/UI_WORKFLOWS.md) | 13 个画布工作流怎么用、节点怎么接 |
 | [docs/CONTRACTS.md](docs/CONTRACTS.md) | 字段级契约、错误码、缓存/指纹规则 |
 | [docs/PLAN.md](docs/PLAN.md) | 里程碑与设计决策 |
 | [docs/ENGINEERING.md](docs/ENGINEERING.md) | 开发与维护说明（仓库结构、本地验证、发布流程） |

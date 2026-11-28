@@ -1,0 +1,236 @@
+{
+  "1": {
+    "class_type": "DirectorDeck_ModelLoader",
+    "inputs": {
+      "fl2va_model": "MiniMax\\fastvideo_fasth3_8step_v2_pruned_bf16.safetensors",
+      "text_encoder": "qwen3vl_32b_heretic_minimax_h3_nvfp4.safetensors",
+      "video_vae": "minimax_h3_video_vae_int8_convrot.safetensors",
+      "audio_vae": "minimax_h3_audio_vae_fp32.safetensors",
+      "weight_dtype": "default",
+      "vram_tier": "auto",
+      "ref2va_model": "none",
+      "lora_1": "minimax\\pika_h3_flex_ref2va_v1_bf16.safetensors",
+      "strength_1": 1.0,
+      "lora_2": "minimax\\dmad_minimax_h3_8step_full_critic_comfyui.safetensors",
+      "strength_2": 0.5,
+      "lora_3": "minimax\\Motion_Repair运动连续性.safetensors",
+      "strength_3": 0.3,
+      "lora_4": "none",
+      "strength_4": 1.0,
+      "shift_video": 12.0,
+      "shift_audio": 3.0
+    }
+  },
+  "2": {
+    "class_type": "DirectorDeck_DirectorConfig",
+    "inputs": {
+      "width": 640,
+      "height": 352,
+      "segment_seconds": 5.0,
+      "handoff_frames": 22,
+      "sampler_name": "er_sde",
+      "scheduler": "beta",
+      "steps": 10,
+      "denoise": 1.0,
+      "sigmas_string": "1.0, 0.972973, 0.923077, 0.8, 0.571429, 0.333333, 0.0",
+      "interpolate_to_steps": 10,
+      "seed_strategy": "per_segment",
+      "seed_base": 12345,
+      "preview": true,
+      "vram_policy": "release",
+      "cleanup_segments": "ask",
+      "output_dir": "DirectorDeck",
+      "seam_enabled": true,
+      "seam_window": 12,
+      "seam_max_add": 0.1,
+      "seam_gain_limit": 0.04,
+      "resolution": "480p",
+      "aspect_ratio": "16:9 横屏"
+    }
+  },
+  "6": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "11.png"
+    }
+  },
+  "7": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "睡衣.png"
+    }
+  },
+  "3": {
+    "class_type": "DirectorDeck_ScriptImport",
+    "inputs": {
+      "script": "第1段（5秒）\n[画面] 雨夜，女主撑着伞站在老宅台阶下，男主从门内走出。\n女主：你终于回来了。\n男主：这十年，我一直在找你。\n\n第2段（5秒）\n[画面] 两人在雨中对视，镜头缓慢推近女主的脸。\n女主：先进屋吧。",
+      "format": "自动识别",
+      "segment_seconds": 5.0,
+      "match_assets": true,
+      "match_scenes": true,
+      "min_score": 0.55,
+      "assets": [
+        "8",
+        0
+      ]
+    }
+  },
+  "8": {
+    "class_type": "DirectorDeck_AssetShelf",
+    "inputs": {
+      "image_1": [
+        "6",
+        0
+      ],
+      "image_2": [
+        "7",
+        0
+      ]
+    }
+  },
+  "10": {
+    "class_type": "DirectorDeck_DirectorTake",
+    "inputs": {
+      "bundle": [
+        "1",
+        0
+      ],
+      "config": [
+        "2",
+        0
+      ],
+      "script": [
+        "3",
+        0
+      ],
+      "segment_index": 1,
+      "bundle_policy": "provided",
+      "config_policy": "inherit",
+      "assets_policy": "replace",
+      "brief_policy": "inherit",
+      "cast_policy": "inherit",
+      "continuity": "start",
+      "seed": 0,
+      "cache_mode": "auto",
+      "assets": [
+        "8",
+        0
+      ]
+    }
+  },
+  "11": {
+    "class_type": "DirectorDeck_DirectorTake",
+    "inputs": {
+      "bundle": [
+        "1",
+        0
+      ],
+      "config": [
+        "2",
+        0
+      ],
+      "script": [
+        "3",
+        0
+      ],
+      "segment_index": 2,
+      "bundle_policy": "inherit",
+      "config_policy": "inherit",
+      "assets_policy": "inherit",
+      "brief_policy": "inherit",
+      "cast_policy": "inherit",
+      "continuity": "latent_tail",
+      "seed": 1002,
+      "cache_mode": "auto",
+      "assets": [
+        "8",
+        0
+      ],
+      "previous_segment": [
+        "10",
+        0
+      ]
+    }
+  },
+  "40": {
+    "class_type": "DirectorDeck_FinalCut",
+    "inputs": {
+      "segment_1": [
+        "10",
+        0
+      ],
+      "images_1": [
+        "10",
+        1
+      ],
+      "audio_1": [
+        "10",
+        2
+      ],
+      "segment_2": [
+        "11",
+        0
+      ],
+      "images_2": [
+        "11",
+        1
+      ],
+      "audio_2": [
+        "11",
+        2
+      ],
+      "save_manifest": true,
+      "audio_from_source": false,
+      "audio_crossfade_ms": 80,
+      "merge_mode": "手动",
+      "merge_token": 0
+    }
+  },
+  "50": {
+    "class_type": "DirectorDeck_FinalRefine",
+    "inputs": {
+      "bundle": [
+        "1",
+        0
+      ],
+      "images": [
+        "40",
+        0
+      ],
+      "audio": [
+        "40",
+        1
+      ],
+      "mode": "潜空间二采 + RelayVSR 2x",
+      "prompt": "电影感，细节清晰，自然皮肤质感，稳定光影，高质量成片",
+      "seed": 0,
+      "latent_denoise": 0.2,
+      "latent_steps": 4,
+      "latent_sampler": "er_sde",
+      "latent_scheduler": "beta",
+      "refiner_lora": "none",
+      "refiner_lora_strength": 1.0,
+      "relay_model": "RelayVSR\\relayvsr_x2_lightx2v_int8_convrot.safetensors",
+      "relay_vae": "RelayVSR\\relayvsr_flash_vae_x2_fp32.safetensors",
+      "relay_detail": 0.5,
+      "relay_lock_exposure": true,
+      "lanczos_scale": 2.0,
+      "target_width": 0,
+      "target_height": 0,
+      "free_vram": true,
+      "save_video": true,
+      "output_dir": "DirectorDeck",
+      "filename_prefix": "complete",
+      "run_mode": "手动",
+      "run_token": 0,
+      "segment": [
+        "11",
+        0
+      ],
+      "config": [
+        "2",
+        0
+      ]
+    }
+  }
+}

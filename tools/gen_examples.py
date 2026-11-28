@@ -27,6 +27,8 @@ AUDIO_VAE = "minimax_h3_audio_vae_fp32.safetensors"
 LORA_1 = "minimax\\pika_h3_flex_ref2va_v1_bf16.safetensors"
 LORA_2 = "minimax\\dmad_minimax_h3_8step_full_critic_comfyui.safetensors"
 LORA_3 = "minimax\\Motion_Repair运动连续性.safetensors"
+RELAY_MODEL = "RelayVSR\\relayvsr_x2_lightx2v_int8_convrot.safetensors"
+RELAY_VAE = "RelayVSR\\relayvsr_flash_vae_x2_fp32.safetensors"
 SIGMAS = "1.0, 0.972973, 0.923077, 0.8, 0.571429, 0.333333, 0.0"
 SCRIPT = """第1段（5秒）
 清晨的湖面，薄雾浮动，一叶小舟缓缓划过，镜头从远处缓慢推进，暖金色晨光。
@@ -826,6 +828,75 @@ def m15_final_refine() -> dict:
     }
 
 
+def m16_complete_workflow() -> dict:
+    """M16 完整工作流：外部剧本导入 + 素材自动匹配 + 两段生成 + 手动合并 + 二次处理成片。
+
+    画布上的推荐操作顺序：
+    1. 直接排队：两段生成器各自跑完，节点上可预览 mp4；
+    2. 点合并器上的“🎬 手动合并本片”；
+    3. 点二次处理成片上的“🎬 生成最终视频”（默认二采 + RelayVSR 2x）。
+    """
+    cfg = config_node()
+    cfg["inputs"]["resolution"] = "480p"
+    cfg["inputs"]["aspect_ratio"] = "16:9 横屏"
+    external_script = (
+        "第1段（5秒）\n"
+        "[画面] 雨夜，女主撑着伞站在老宅台阶下，男主从门内走出。\n"
+        "女主：你终于回来了。\n"
+        "男主：这十年，我一直在找你。\n\n"
+        "第2段（5秒）\n"
+        "[画面] 两人在雨中对视，镜头缓慢推近女主的脸。\n"
+        "女主：先进屋吧。")
+    cut_inputs = {
+        "segment_1": ["10", 0], "images_1": ["10", 1], "audio_1": ["10", 2],
+        "segment_2": ["11", 0], "images_2": ["11", 1], "audio_2": ["11", 2],
+        "save_manifest": True, "audio_from_source": False,
+        "audio_crossfade_ms": 80,
+        "merge_mode": "手动", "merge_token": 0,
+    }
+    final_inputs = {
+        "bundle": ["1", 0],
+        "images": ["40", 0],
+        "audio": ["40", 1],
+        "mode": "潜空间二采 + RelayVSR 2x",
+        "prompt": "电影感，细节清晰，自然皮肤质感，稳定光影，高质量成片",
+        "seed": 0,
+        "latent_denoise": 0.2, "latent_steps": 4,
+        "latent_sampler": "er_sde", "latent_scheduler": "beta",
+        "refiner_lora": "none", "refiner_lora_strength": 1.0,
+        "relay_model": RELAY_MODEL, "relay_vae": RELAY_VAE,
+        "relay_detail": 0.5, "relay_lock_exposure": True,
+        "lanczos_scale": 2.0, "target_width": 0, "target_height": 0,
+        "free_vram": True, "save_video": True,
+        "output_dir": "DirectorDeck", "filename_prefix": "complete",
+        "run_mode": "手动", "run_token": 0,
+        "segment": ["11", 0],
+        "config": ["2", 0],
+    }
+    return {
+        "1": loader_node(),
+        "2": cfg,
+        "6": {"class_type": "LoadImage", "inputs": {"image": "11.png"}},
+        "7": {"class_type": "LoadImage", "inputs": {"image": "睡衣.png"}},
+        "3": {"class_type": "DirectorDeck_ScriptImport",
+              "inputs": {"script": external_script, "format": "自动识别",
+                         "segment_seconds": 5.0, "match_assets": True,
+                         "match_scenes": True, "min_score": 0.55,
+                         "assets": ["8", 0]}},
+        "8": {"class_type": "DirectorDeck_AssetShelf",
+              "inputs": {"image_1": ["6", 0], "image_2": ["7", 0]}},
+        "10": take_node("10", "1", "2", "3", assets="8",
+                        extra={"segment_index": 1, "continuity": "start"}),
+        "11": take_node("11", "1", "2", "3", assets="8",
+                        extra={"segment_index": 2, "bundle_policy": "inherit",
+                               "assets_policy": "inherit",
+                               "continuity": "latent_tail",
+                               "previous_segment": ["10", 0], "seed": 1002}),
+        "40": {"class_type": "DirectorDeck_FinalCut", "inputs": cut_inputs},
+        "50": {"class_type": "DirectorDeck_FinalRefine", "inputs": final_inputs},
+    }
+
+
 def main() -> int:
     os.makedirs(EXAMPLE_DIR, exist_ok=True)
     for name, graph in (("m1_single_segment_api", single()),
@@ -843,7 +914,8 @@ def main() -> int:
                         ("m11_tts_chain_api", m11_tts_chain()),
                         ("m13_import_api", m13_import_chain()),
                         ("m14_unlimited_merge_api", m14_unlimited_merge()),
-                        ("m15_final_refine_api", m15_final_refine())):
+                        ("m15_final_refine_api", m15_final_refine()),
+                        ("m16_complete_workflow_api", m16_complete_workflow())):
         # 合并器默认手动合并：示例里显式写出来，避免用户以为跑完会自动出片。
         for node in graph.values():
             if node.get("class_type") == "DirectorDeck_FinalCut":

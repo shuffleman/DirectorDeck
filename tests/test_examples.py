@@ -207,6 +207,20 @@ class ExampleTest(unittest.TestCase):
         self.assertEqual(second["inputs"]["continuity"], "latent_tail")
         self.assertIn("previous_segment", second["inputs"])
 
+    def test_m16_complete_workflow(self):
+        graph = load("m16_complete_workflow_api.json")
+        self._check(graph)
+        classes = {n["class_type"] for n in graph.values()}
+        for cls in ("DirectorDeck_ScriptImport", "DirectorDeck_DirectorTake",
+                    "DirectorDeck_FinalCut", "DirectorDeck_FinalRefine"):
+            self.assertIn(cls, classes)
+        final = next(n for n in graph.values()
+                     if n["class_type"] == "DirectorDeck_FinalRefine")
+        self.assertEqual(final["inputs"]["run_mode"], "手动")
+        self.assertIn("RelayVSR", final["inputs"]["mode"])
+        self.assertIn("segment", final["inputs"])
+        self.assertIn("config", final["inputs"])
+
     def test_m15_final_refine(self):
         graph = load("m15_final_refine_api.json")
         self._check(graph)
