@@ -401,9 +401,11 @@ function installNodeButton(node, label, handler) {
   const button = document.createElement("button");
   button.textContent = label;
   button.style.cssText = [
-    "width:100%", "margin:2px 0", "padding:5px 8px",
+    "width:100%", "height:32px", "min-height:32px", "max-height:32px",
+    "margin:2px 0", "padding:4px 8px", "box-sizing:border-box",
     "background:#2b4a6b", "color:#eaf2ff", "border:1px solid #4b6f96",
     "border-radius:6px", "font-size:12px", "cursor:pointer",
+    "display:block", "flex:0 0 auto",
   ].join(";");
   button.onclick = (event) => {
     event.preventDefault();
@@ -415,8 +417,14 @@ function installNodeButton(node, label, handler) {
     if (domWidget) {
       domWidget.serialize = false;
       if (domWidget.options) domWidget.options.serialize = false;
+      // ComfyUI 的 DOM widget 默认按剩余空间拉伸；这里固定 32px，别让按钮变成一大块。
+      domWidget.computeSize = (width) => [width || 200, 36];
     }
     node.__ddButtons.add(label);
+    const needed = node.computeSize ? node.computeSize() : null;
+    if (needed && node.size && node.size[1] < needed[1]) {
+      node.setSize([node.size[0], needed[1]]);
+    }
     app.graph.setDirtyCanvas(true, true);
   } catch (error) {
     console.warn("[DirectorDeck] 节点按钮添加失败（不影响使用）：", error);
@@ -454,10 +462,11 @@ function triggerFinalVideo(node) {
 }
 
 function installNodeActions(node) {
-  if (!node || !node.type) return;
-  if (node.type === TAKE) installNodeButton(node, t("rerollNode"), () => rerollTakeNode(node));
-  if (node.type === PREFIX + "FinalCut") installNodeButton(node, t("mergeNode"), () => triggerManualMerge(node));
-  if (node.type === PREFIX + "FinalRefine") installNodeButton(node, t("finalNode"), () => triggerFinalVideo(node));
+  const type = nodeTypeOf(node);
+  if (!type) return;
+  if (type === TAKE) installNodeButton(node, t("rerollNode"), () => rerollTakeNode(node));
+  if (type === PREFIX + "FinalCut") installNodeButton(node, t("mergeNode"), () => triggerManualMerge(node));
+  if (type === PREFIX + "FinalRefine") installNodeButton(node, t("finalNode"), () => triggerFinalVideo(node));
 }
 
 // ---------------------------------------------------------- 剧本导入 -> 自动建链
@@ -778,6 +787,7 @@ const NODE_INPUT_ZH = {
     segment_4: "第 4 段", images_4: "第 4 段画面", audio_4: "第 4 段音轨",
     save_manifest: "保存清单", audio_from_source: "源音轨无损",
     audio_crossfade_ms: "边界淡入淡出（毫秒）",
+    merge_mode: "合并方式", merge_token: "合并触发 token",
   },
   DirectorDeck_SegmentCache: {
     segment: "段数据", mode: "操作", scope: "范围",
@@ -827,14 +837,15 @@ const NODE_INPUT_ZH = {
 
 const NODE_OUTPUT_ZH = {
   DirectorDeck_ModelLoader: { bundle: "模型组合", summary: "摘要" },
+  DirectorDeck_DirectorConfig: { config: "全局配置" },
   DirectorDeck_AssetShelf: { assets: "素材库" },
   DirectorDeck_ScriptDesk: { script: "剧本", summary: "摘要" },
   DirectorDeck_SegmentBrief: { brief: "段级剧本" },
   DirectorDeck_FramePlanner: { plan: "帧计划", summary: "摘要" },
   DirectorDeck_DirectorTake: { segment: "段数据", images: "画面", audio: "音轨" },
-  DirectorDeck_SeamFixer: { images: "画面", info: "接缝信息" },
+  DirectorDeck_SeamFixer: { images: "画面", info: "接缝信息", report: "接缝报告" },
   DirectorDeck_FinalCut: { images: "成片画面", audio: "成片音轨", manifest: "成片清单" },
-  DirectorDeck_SegmentCache: { segment: "段数据", summary: "摘要" },
+  DirectorDeck_SegmentCache: { segment: "段数据", summary: "摘要", report: "缓存报告" },
   DirectorDeck_VoiceLock: { cast: "角色音色表", summary: "摘要" },
   DirectorDeck_TTSBooth: {
     cast: "角色音色表", audio_1: "音频 1", audio_2: "音频 2", audio_3: "音频 3",
@@ -848,9 +859,82 @@ const NODE_OUTPUT_ZH = {
   DirectorDeck_FinalRefine: { images: "最终画面", audio: "最终音轨", report: "处理报告" },
 };
 
+// 关键：输入/输出插头的显示名要在“节点定义”阶段就写进去。
+// ComfyUI 前端创建插头时读的是 input spec 的 display_name / slot 的 localized_name，
+// 只在 nodeCreated 之后再改 label，Vue 渲染的插头不一定会重新取。
+function patchNodeDef(nodeType, nodeData) {
+  const inputMap = NODE_INPUT_ZH[nodeData.name];
+  const outputMap = NODE_OUTPUT_ZH[nodeData.name];
+  if (!inputMap && !outputMap) return;
+
+  // 1) 输入 spec 直接写入 display_name（socket 和控件都会用到）。
+  if (inputMap && nodeData.input) {
+    for (const group of ["required", "optional"]) {
+      const specs = nodeData.input[group];
+      if (!specs) continue;
+      for (const [name, label] of Object.entries(inputMap)) {
+        const spec = specs[name];
+        if (!Array.isArray(spec)) continue;
+        let options = spec[1];
+        if (!options || typeof options !== "object" || Array.isArray(options)) {
+          options = {};
+          spec[1] = options;
+        }
+        options.display_name = label;
+        options.localized_name = label;
+      }
+    }
+  }
+
+  // 2) addInput / addOutput 时立刻补 label+localized_name；
+  //    这样新建节点、加载工作流、动态加段输入都能在第一帧就是中文。
+  const proto = nodeType.prototype;
+  if (proto.__ddZhPatched) return;
+  proto.__ddZhPatched = true;
+
+  const originalAddInput = proto.addInput;
+  if (inputMap && typeof originalAddInput === "function") {
+    proto.addInput = function (name, type, ...rest) {
+      const input = originalAddInput.call(this, name, type, ...rest);
+      let label = inputMap[name];
+      if (!label) {
+        const match = /^(segment|images|audio)_(\d+)$/.exec(String(name || ""));
+        if (match) {
+          const suffix = match[1] === "segment" ? "段"
+            : match[1] === "images" ? "段画面" : "段音轨";
+          label = `第${match[2]}${suffix}`;
+        }
+      }
+      if (input && label) {
+        input.label = label;
+        input.localized_name = label;
+      }
+      return input;
+    };
+  }
+
+  const originalAddOutput = proto.addOutput;
+  if (outputMap && typeof originalAddOutput === "function") {
+    proto.addOutput = function (name, type, ...rest) {
+      const output = originalAddOutput.call(this, name, type, ...rest);
+      const label = outputMap[name];
+      if (output && label) {
+        output.label = label;
+        output.localized_name = label;
+      }
+      return output;
+    };
+  }
+}
+
+function nodeTypeOf(node) {
+  return (node && (node.type || node.comfyClass || node.constructor?.comfyClass)) || "";
+}
+
 function localizeNode(node) {
-  if (!node || !node.type || !node.type.startsWith(PREFIX)) return;
-  const inputMap = NODE_INPUT_ZH[node.type];
+  const type = nodeTypeOf(node);
+  if (!type || !type.startsWith(PREFIX)) return;
+  const inputMap = NODE_INPUT_ZH[type];
   if (inputMap) {
     for (const w of node.widgets || []) {
       const label = inputMap[w.name];
@@ -867,7 +951,7 @@ function localizeNode(node) {
       }
     }
   }
-  const outputMap = NODE_OUTPUT_ZH[node.type];
+  const outputMap = NODE_OUTPUT_ZH[type];
   if (outputMap) {
     for (const output of node.outputs || []) {
       const label = outputMap[output.name];
@@ -877,8 +961,8 @@ function localizeNode(node) {
       }
     }
   }
-  if (node.type === "DirectorDeck_DirectorConfig") bindConfigCanvas(node);
-  if (node.type === "DirectorDeck_FinalCut") {
+  if (type === "DirectorDeck_DirectorConfig") bindConfigCanvas(node);
+  if (type === "DirectorDeck_FinalCut") {
     // 动态加的 segment_5... 也要有中文插头名（静态映射只覆盖到 4）。
     for (const input of node.inputs || []) {
       const match = /^(segment|images|audio)_(\d+)$/.exec(input.name || "");
@@ -957,6 +1041,10 @@ function bindConfigCanvas(node) {
 // ------------------------------------------------------------------ 注册
 app.registerExtension({
   name: "DirectorDeck.Assistant",
+  // 在节点定义阶段就把输入/输出插头名写成中文（渲染第一帧就是中文）。
+  beforeRegisterNodeDef(nodeType, nodeData) {
+    patchNodeDef(nodeType, nodeData);
+  },
   // 新建/加载节点时把参数显示名换成中文（API 字段名仍是英文）。
   nodeCreated(node) {
     localizeNode(node);
