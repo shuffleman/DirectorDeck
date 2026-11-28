@@ -1,5 +1,5 @@
 {
-  "id": "24f61d17-98ee-45ae-8a2e-38d63fbfe81f",
+  "id": "2e72db6b-502f-4ecc-aa50-c3836d864fab",
   "revision": 0,
   "last_node_id": 50,
   "last_link_id": 12,
@@ -1021,6 +1021,24 @@
             "name": "audio_crossfade_ms"
           },
           "link": null
+        },
+        {
+          "localized_name": "merge_mode",
+          "name": "merge_mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "merge_mode"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "merge_token",
+          "name": "merge_token",
+          "type": "INT",
+          "widget": {
+            "name": "merge_token"
+          },
+          "link": null
         }
       ],
       "outputs": [
@@ -1057,6 +1075,8 @@
       "widgets_values": [
         true,
         true,
+        0,
+        "手动",
         0
       ]
     },

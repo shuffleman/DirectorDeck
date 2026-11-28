@@ -799,6 +799,11 @@ def main() -> int:
                         ("m11_tts_chain_api", m11_tts_chain()),
                         ("m13_import_api", m13_import_chain()),
                         ("m14_unlimited_merge_api", m14_unlimited_merge())):
+        # 合并器默认手动合并：示例里显式写出来，避免用户以为跑完会自动出片。
+        for node in graph.values():
+            if node.get("class_type") == "DirectorDeck_FinalCut":
+                node.setdefault("inputs", {}).setdefault("merge_mode", "手动")
+                node["inputs"].setdefault("merge_token", 0)
         path = os.path.join(EXAMPLE_DIR, name + ".json")
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(graph, fh, ensure_ascii=False, indent=2)

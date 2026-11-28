@@ -350,11 +350,11 @@ segment_fingerprint = "sha1:" + sha1(canonical_json({
 | 6 | `DirectorDeck_VoiceLock` | CAST + STRING | roles（多行“角色: 槽号, 起始秒, 增益dB, 优先级”）、lock_audio、mix_mode(auto_duck/priority/sum)、duck_db、attack_ms、release_ms、audio_1..3（可选 AUDIO） |
 | 7 | `DirectorDeck_FramePlanner` | PLAN + STRING | script、config、keep_full（可选） |
 | 8 | `DirectorDeck_ContinuityGuide` | CONDITIONING/IMAGE | **已并入 DirectorTake**：`continuity=guide_tail` 走 RGB 尾帧+尾音 AddGuide；`continuity=latent_tail` 直接搬上一段 latent 尾部 token（0.2.1），都不需要独立节点 |
-| 9 | `DirectorDeck_DirectorTake` | SEGMENT + IMAGE + AUDIO | bundle、config、script、continuity、segment_index、seed、cache_mode(auto/off/reroll) + optional: previous_segment、assets、brief、cast |
+| 9 | `DirectorDeck_DirectorTake` | SEGMENT + IMAGE + AUDIO | bundle、config、script、continuity、segment_index、seed、cache_mode(auto/off/reroll) + optional: previous_segment、assets、brief、cast；UI 输出本段 mp4 预览（`ui.images[].filename` 为 temp mp4） |
 | 10 | `DirectorDeck_SeamFixer` | IMAGE + STRING | prev_images、cur_images、cur_head + optional: enabled、window、max_add、gain_limit |
 | 11 | `DirectorDeck_SegmentCache` | SEGMENT + STRING | segment、mode(status/store/clear)、scope（可选） |
 | 12 | `DirectorDeck_Refiner` | SEGMENT + IMAGE + AUDIO | bundle、segment、images、audio + optional: mode(latent_2nd/lanczos2x)、denoise、steps、sampler_name、scheduler、upscale |
-| 13 | `DirectorDeck_FinalCut` | IMAGE + AUDIO + MANIFEST | segment_1/images_1/audio_1（必填）+ segment_2..4/images_2..4/audio_2..4（默认声明）+ **segment_5..N/images/audio（动态输入，经 `**kwargs` 接收，段数不限）** + save_manifest、audio_from_source、audio_crossfade_ms（0.2.4） |
+| 13 | `DirectorDeck_FinalCut` | IMAGE + AUDIO + MANIFEST | segment_1/images_1/audio_1（必填）+ segment_2..4/images_2..4/audio_2..4（默认声明）+ **segment_5..N/images/audio（动态输入，经 `**kwargs` 接收，段数不限）** + save_manifest、audio_from_source、audio_crossfade_ms（0.2.4）+ **merge_mode(手动/自动)、merge_token（手动合并门闩）** |
 | 14 | `DirectorDeck_OutputLibrary`（可选） | path+FILE | segment/manifest、dir、naming |
 | 15 | `DirectorDeck_PromptSmith`（可选） | STRING | template/task、remote provider（默认关） |
 | 16 | `DirectorDeck_DirectorRunner`（M4，可选） | ALL | plan/config、run_mode |

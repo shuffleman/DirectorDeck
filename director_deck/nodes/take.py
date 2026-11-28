@@ -23,6 +23,7 @@ from PIL import Image
 import folder_paths
 
 from ..adapters import av_latent, h3, segment_cache
+from ..adapters import preview as preview_lib
 from ..adapters import segment_store
 from ..core import assets as assets_lib
 from ..core import audio as audio_math
@@ -192,7 +193,9 @@ class DirectorDeckTake:
             "cast": resolved.cast,
             "brief": resolved.brief,
         })
-        ui = self._preview_ui(images) if config.get("preview", True) else {}
+        ui = self._preview_media(images, audio, config, int(segment_index))
+        if ui.get("images"):
+            result["preview_mp4"] = ui["images"][0].get("filename")
         self._write_segment_meta(config, segment_index, cache_lib.cache_stem(cache_key), result)
         print(f"[DirectorDeck] 第 {segment_index} 段命中缓存：{result['frames']} 帧，"
               f"{result['elapsed_s']}s（跳过采样，key={cache_key[:16]}…）")
@@ -235,7 +238,7 @@ class DirectorDeckTake:
 
     @staticmethod
     def _preview_ui(images) -> dict:
-        """把首帧存成临时 png，让 ComfyUI 在节点上显示预览。"""
+        """首帧 png 预览（视频预览失败时的兜底）。"""
         try:
             temp_dir = folder_paths.get_temp_directory()
             os.makedirs(temp_dir, exist_ok=True)
@@ -246,6 +249,23 @@ class DirectorDeckTake:
             return {"images": [{"filename": name, "subfolder": "", "type": "temp"}]}
         except Exception:
             return {}
+
+    def _preview_media(self, images, audio, config: dict, segment_index: int) -> dict:
+        """把本段画面+音轨压成临时 mp4，让生成器节点可以直接播放预览。"""
+        if not config.get("preview", True):
+            return {}
+        try:
+            temp_dir = folder_paths.get_temp_directory()
+            os.makedirs(temp_dir, exist_ok=True)
+            name = f"directordeck_seg_{int(segment_index):02d}_{int(time.time() * 1000)}.mp4"
+            preview_lib.write_preview_mp4(
+                images, audio, os.path.join(temp_dir, name),
+                fps=int(config.get("fps", 24) or 24))
+            return {"images": [{"filename": name, "subfolder": "", "type": "temp"}],
+                    "animated": [True]}
+        except Exception as exc:
+            print(f"[DirectorDeck] 视频预览生成失败，退回首帧预览：{exc}")
+            return self._preview_ui(images)
 
     @staticmethod
     def _restore_previous(previous_segment: dict | None, bundle: dict):
@@ -580,7 +600,9 @@ class DirectorDeckTake:
             except Exception as exc:  # 缓存写失败不影响本次出片
                 print(f"[DirectorDeck] 缓存写入失败（继续出片）：{exc}")
 
-        ui = self._preview_ui(images) if config.get("preview", True) else {}
+        ui = self._preview_media(images, audio, config, int(segment_index))
+        if ui.get("images"):
+            result["preview_mp4"] = ui["images"][0].get("filename")
         self._write_segment_meta(config, int(segment_index), store_key, result)
 
         print(f"[DirectorDeck] 第 {segment_index} 段完成：{result['frames']} 帧，"

@@ -22,6 +22,15 @@ import torch
 from ..adapters import segment_store
 from ..core.types import CATEGORY, FPS, TYPE_MANIFEST, TYPE_SEGMENT
 
+try:  # ComfyUI 内置：手动态阻断下游节点（不被当错误）
+    from comfy_execution.graph_utils import ExecutionBlocker
+except Exception:  # 单测/脱离 ComfyUI 时允许 import
+    ExecutionBlocker = None
+
+# 手动合并门闩：每个合并器节点记住“上次已执行到哪个 token”。
+# 前端按钮每点一次就把 merge_token +1，后端只有发现 token 变了才真合并。
+_MERGE_TOKENS: dict[str, int] = {}
+
 # 画布默认只声明 4 组输入（够用且不乱）；更多段由前端“动态加输入”产生
 # segment_5/images_5/audio_5...，ComfyUI 会把它们作为额外 kwargs 传进来。
 MAX_SEGMENTS = 4  # 默认声明的槽位数，不是上限
@@ -61,7 +70,17 @@ class DirectorDeckFinalCut:
         # 段边界音频交叉淡化（跨段 ducking/生成音频的衔接更自然）。
         optional["audio_crossfade_ms"] = ("INT", {"default": 0, "min": 0, "max": 500,
                                                  "tooltip": "段边界等功率交叉淡化时长（毫秒），0=硬接"})
-        return {"required": required, "optional": optional}
+        # ---- 手动合并门闩（0.9.1）----
+        # 默认“手动”：普通排队不会合并（会静默跳过下游），
+        # 只有点节点上的“手动合并”按钮（把 merge_token +1）才真正合并一次。
+        optional["merge_mode"] = (["手动", "自动"], {
+            "default": "手动",
+            "tooltip": "手动=点节点上的“🎬 手动合并本片”才执行合并；自动=每次排队都合并"})
+        optional["merge_token"] = ("INT", {
+            "default": 0, "min": 0, "max": 0xFFFFFFFFFFFF,
+            "tooltip": "内部用：前端“手动合并”按钮会把它 +1，用来触发一次合并"})
+        return {"required": required, "optional": optional,
+                "hidden": {"unique_id": "UNIQUE_ID"}}
 
     @staticmethod
     def _source_audio_full(segment: dict) -> dict | None:
@@ -102,7 +121,25 @@ class DirectorDeckFinalCut:
         return {"waveform": waveform, "sample_rate": sample_rate}
 
     def merge(self, segment_1, images_1, audio_1, save_manifest=True,
-              audio_from_source=False, audio_crossfade_ms=0, **kwargs):
+              audio_from_source=False, audio_crossfade_ms=0,
+              merge_mode="手动", merge_token=0, **kwargs):
+        # ---- 手动合并门闩 ----
+        # 普通运行（比如刚点“再次生成”预览某段）不应该自动合并；
+        # 返回 ExecutionBlocker 会静默阻断下游 SaveVideo，且不算报错。
+        mode = str(merge_mode or "手动")
+        token = int(merge_token or 0)
+        uid = str(kwargs.get("unique_id") or id(self))
+        if mode != "自动":
+            if ExecutionBlocker is None:
+                raise RuntimeError("手动合并需要 ComfyUI 的 ExecutionBlocker，请重启 ComfyUI")
+            last = _MERGE_TOKENS.get(uid)
+            if last is None or token <= last:
+                _MERGE_TOKENS.setdefault(uid, token)
+                print("[DirectorDeck] 合并器=手动：等待点击节点上的“手动合并”（本次跳过合并）")
+                return (ExecutionBlocker(None), ExecutionBlocker(None),
+                        ExecutionBlocker(None))
+            _MERGE_TOKENS[uid] = token
+
         pieces_images = []
         pieces_audio = []
         metas = []

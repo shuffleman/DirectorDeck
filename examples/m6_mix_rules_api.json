@@ -136,7 +136,9 @@
         2
       ],
       "save_manifest": true,
-      "audio_from_source": true
+      "audio_from_source": true,
+      "merge_mode": "手动",
+      "merge_token": 0
     }
   },
   "41": {

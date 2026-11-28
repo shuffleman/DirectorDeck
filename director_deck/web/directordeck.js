@@ -54,6 +54,10 @@ const I18N = {
     addCutInput: "合并器 +1 段输入",
     needCut: "请先选中“多段合并器”（或先在画布上放一个）",
     cutInputAdded: "已给合并器加一组段输入",
+    rerollNode: "🔄 再次生成本段",
+    mergeNode: "🎬 手动合并本片",
+    rerolledSeg: "已为第 N 段换种子并再次生成",
+    mergeQueued: "已触发一次手动合并（等待执行）",
     canvasLocked: "分辨率预设生效：宽/高自动同步；要手填宽高请把“分辨率”改成“自定义（用宽高）”",
     helpText:
       "用法：\n1) 先放好 模型加载器 / 全局配置 / 剧本加载器 / 视频生成器；\n2) 选中某个“视频生成器”，点“添加下一段”自动接链；\n3) 想单独换素材/音色/剧本，点对应按钮，会把 policy 自动切到 replace；\n4) 想重抽某段，选中它点“重抽选中段”。",
@@ -93,6 +97,10 @@ const I18N = {
     addCutInput: "FinalCut +1 segment",
     needCut: "Select a FinalCut node first (or add one to the canvas)",
     cutInputAdded: "Added one segment input group to FinalCut",
+    rerollNode: "🔄 Regenerate this segment",
+    mergeNode: "🎬 Manual merge",
+    rerolledSeg: "New seed queued for segment N",
+    mergeQueued: "Manual merge queued",
     canvasLocked: "Resolution preset is active: width/height follow it. Choose '自定义（用宽高）' to edit them manually.",
     helpText:
       "Workflow:\n1) Place ModelLoader / Config / ScriptDesk / DirectorTake;\n2) Select a DirectorTake and click 'Add next segment' to chain it;\n3) Click override buttons to add assets/voice/brief nodes (policy auto = replace);\n4) Select a segment and click 'Reroll' to re-generate with a new seed.",
@@ -376,6 +384,66 @@ function adjustDuck(delta) {
   widgetRef.value = Math.round(value * 2) / 2;
   app.graph.setDirtyCanvas(true, true);
   toast(`${t("duckChanged")}${widgetRef.value}dB`);
+}
+
+// ---------------------------------------------------------- 节点上的快捷按钮
+// 用 ComfyUI 的 DOM widget 在节点本体上挂两个按钮：
+// - 视频生成器：🔄 再次生成本段（换种子并排队）
+// - 多段合并器：🎬 手动合并本片（merge_token +1，后端才真正合并）
+function installNodeButton(node, label, handler) {
+  if (!node || typeof node.addDOMWidget !== "function") return;
+  node.__ddButtons = node.__ddButtons || new Set();
+  if (node.__ddButtons.has(label)) return;
+  const button = document.createElement("button");
+  button.textContent = label;
+  button.style.cssText = [
+    "width:100%", "margin:2px 0", "padding:5px 8px",
+    "background:#2b4a6b", "color:#eaf2ff", "border:1px solid #4b6f96",
+    "border-radius:6px", "font-size:12px", "cursor:pointer",
+  ].join(";");
+  button.onclick = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    handler();
+  };
+  try {
+    const domWidget = node.addDOMWidget(`dd_btn_${label}`, "button", button, { serialize: false });
+    if (domWidget) {
+      domWidget.serialize = false;
+      if (domWidget.options) domWidget.options.serialize = false;
+    }
+    node.__ddButtons.add(label);
+    app.graph.setDirtyCanvas(true, true);
+  } catch (error) {
+    console.warn("[DirectorDeck] 节点按钮添加失败（不影响使用）：", error);
+  }
+}
+
+function rerollTakeNode(node) {
+  const seedWidget = widget(node, "seed");
+  if (!seedWidget) return toast(t("failed"), false);
+  // 用 53 位安全整数随机种子，够大且不会丢精度。
+  seedWidget.value = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+  setWidget(node, "cache_mode", "auto");
+  app.graph.setDirtyCanvas(true, true);
+  app.queuePrompt(0, 1);
+  const index = widgetValue(node, "segment_index");
+  toast(`${t("done")}: ${t("rerolledSeg").replace("N", String(index || "?"))}`);
+}
+
+function triggerManualMerge(node) {
+  const tokenWidget = widget(node, "merge_token");
+  if (!tokenWidget) return toast(t("failed"), false);
+  tokenWidget.value = Number(tokenWidget.value || 0) + 1;
+  app.graph.setDirtyCanvas(true, true);
+  app.queuePrompt(0, 1);
+  toast(t("mergeQueued"));
+}
+
+function installNodeActions(node) {
+  if (!node || !node.type) return;
+  if (node.type === TAKE) installNodeButton(node, t("rerollNode"), () => rerollTakeNode(node));
+  if (node.type === PREFIX + "FinalCut") installNodeButton(node, t("mergeNode"), () => triggerManualMerge(node));
 }
 
 // ---------------------------------------------------------- 剧本导入 -> 自动建链
@@ -791,6 +859,7 @@ function localizeNode(node) {
       input.localized_name = input.label;
     }
   }
+  installNodeActions(node);
 }
 
 // 分辨率预设和 backend core/frames.py 保持一致（只用于把宽高控件同步成预设值）。

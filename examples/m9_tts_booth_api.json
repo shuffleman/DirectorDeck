@@ -146,7 +146,9 @@
       ],
       "save_manifest": true,
       "audio_from_source": true,
-      "audio_crossfade_ms": 0
+      "audio_crossfade_ms": 0,
+      "merge_mode": "手动",
+      "merge_token": 0
     }
   },
   "41": {
