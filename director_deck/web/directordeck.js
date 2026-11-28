@@ -56,8 +56,10 @@ const I18N = {
     cutInputAdded: "已给合并器加一组段输入",
     rerollNode: "🔄 再次生成本段",
     mergeNode: "🎬 手动合并本片",
+    finalNode: "🎬 生成最终视频",
     rerolledSeg: "已为第 N 段换种子并再次生成",
     mergeQueued: "已触发一次手动合并（等待执行）",
+    finalQueued: "已触发最终处理（等待执行）",
     canvasLocked: "分辨率预设生效：宽/高自动同步；要手填宽高请把“分辨率”改成“自定义（用宽高）”",
     helpText:
       "用法：\n1) 先放好 模型加载器 / 全局配置 / 剧本加载器 / 视频生成器；\n2) 选中某个“视频生成器”，点“添加下一段”自动接链；\n3) 想单独换素材/音色/剧本，点对应按钮，会把 policy 自动切到 replace；\n4) 想重抽某段，选中它点“重抽选中段”。",
@@ -99,8 +101,10 @@ const I18N = {
     cutInputAdded: "Added one segment input group to FinalCut",
     rerollNode: "🔄 Regenerate this segment",
     mergeNode: "🎬 Manual merge",
+    finalNode: "🎬 Generate final video",
     rerolledSeg: "New seed queued for segment N",
     mergeQueued: "Manual merge queued",
+    finalQueued: "Final processing queued",
     canvasLocked: "Resolution preset is active: width/height follow it. Choose '自定义（用宽高）' to edit them manually.",
     helpText:
       "Workflow:\n1) Place ModelLoader / Config / ScriptDesk / DirectorTake;\n2) Select a DirectorTake and click 'Add next segment' to chain it;\n3) Click override buttons to add assets/voice/brief nodes (policy auto = replace);\n4) Select a segment and click 'Reroll' to re-generate with a new seed.",
@@ -440,10 +444,20 @@ function triggerManualMerge(node) {
   toast(t("mergeQueued"));
 }
 
+function triggerFinalVideo(node) {
+  const tokenWidget = widget(node, "run_token");
+  if (!tokenWidget) return toast(t("failed"), false);
+  tokenWidget.value = Number(tokenWidget.value || 0) + 1;
+  app.graph.setDirtyCanvas(true, true);
+  app.queuePrompt(0, 1);
+  toast(t("finalQueued"));
+}
+
 function installNodeActions(node) {
   if (!node || !node.type) return;
   if (node.type === TAKE) installNodeButton(node, t("rerollNode"), () => rerollTakeNode(node));
   if (node.type === PREFIX + "FinalCut") installNodeButton(node, t("mergeNode"), () => triggerManualMerge(node));
+  if (node.type === PREFIX + "FinalRefine") installNodeButton(node, t("finalNode"), () => triggerFinalVideo(node));
 }
 
 // ---------------------------------------------------------- 剧本导入 -> 自动建链
@@ -795,6 +809,20 @@ const NODE_INPUT_ZH = {
     mode: "二采模式", denoise: "去噪强度", steps: "步数",
     sampler_name: "采样器", scheduler: "调度器", upscale: "放大倍数",
   },
+  DirectorDeck_FinalRefine: {
+    bundle: "模型组合", images: "成片画面", audio: "成片音轨",
+    mode: "处理模式", prompt: "二采提示词", seed: "种子",
+    latent_denoise: "二采去噪", latent_steps: "二采步数",
+    latent_sampler: "二采采样器", latent_scheduler: "二采调度器",
+    refiner_lora: "二采 LoRA", refiner_lora_strength: "二采 LoRA 强度",
+    relay_model: "RelayVSR 模型", relay_vae: "RelayVSR VAE",
+    relay_detail: "Flash 解码细节", relay_lock_exposure: "锁定原曝光",
+    lanczos_scale: "Lanczos 倍数", target_width: "目标宽度",
+    target_height: "目标高度", free_vram: "处理前释放显存",
+    save_video: "保存最终视频", output_dir: "输出目录",
+    filename_prefix: "文件名前缀", run_mode: "执行方式", run_token: "触发 token",
+    segment: "段数据（可选）", config: "全局配置（可选）",
+  },
 };
 
 const NODE_OUTPUT_ZH = {
@@ -817,6 +845,7 @@ const NODE_OUTPUT_ZH = {
     summary: "摘要", segment_count: "段数",
   },
   DirectorDeck_Refiner: { segment: "段数据", images: "画面", audio: "音轨" },
+  DirectorDeck_FinalRefine: { images: "最终画面", audio: "最终音轨", report: "处理报告" },
 };
 
 function localizeNode(node) {

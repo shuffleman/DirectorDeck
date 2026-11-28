@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.11.0 — 二次处理成片节点（二采 / RelayVSR / 二采 LoRA / 手动生成）（2026-11-28）
+
+### 新增
+- 新增节点 **`DirectorDeck_FinalRefine`（二次处理成片）**，接在合并器之后：
+  - `bundle` + `images`/`audio`（可再接 `segment` 拿 prompt/种子、`config` 拿输出目录）；
+  - 处理模式：`关闭（只重新封装）` / `潜空间二采` / `RelayVSR 2x` / `潜空间二采 + RelayVSR 2x` / `Lanczos 放大`；
+  - **潜空间二采**：把成片重新编码成 H3 AV latent，低 denoise 再采（音频锁死、输出仍用原音轨）；
+    支持 prompt、seed、denoise、steps、采样器/调度器；
+  - **二采 LoRA**：`refiner_lora` + `refiner_lora_strength` 只作用于二采（克隆模型后叠 LoRA，不动一采模型）；
+  - **RelayVSR 2x**：内置 RelayVSR 适配（核心 `RelayVSRConditioning`/`VSRDecode`），
+    模型/Flash VAE 下拉、detail、锁原片曝光；`free_vram` 在超分前卸 H3 降显存峰值；
+  - 目标分辨率 `target_width/height`、Lanczos 倍数、保存开关/目录/前缀；
+  - **手动触发**：节点自带 **“🎬 生成最终视频”** DOM 按钮（`run_token` 门闩），普通排队不处理，
+    点按钮才执行；`run_mode=自动` 可恢复自动；
+  - 输出最终 mp4 到 `output/<目录>/final/`，旁边写同名 `.json` 报告，节点上直接预览成片（保留原音轨）。
+- 合并器手动门闩同步优化：首次点击按钮即可执行（token 初始为 0 时才跳过）。
+
+### 修复
+- **节点视频预览/最终视频黑屏 bug**：预览编码把 0~1 浮点直接 `astype(uint8)`，导致画面只有 0/1；
+  已改为 `*255` 再转 uint8。0.10.0 的生成器预览和最终成片都受此影响，本版一并修正。
+
+### 验证（8189 真机，1 段 480p 种子缓存、RelayVSR x2 + 二采 LoRA）
+- 合并器/最终节点未触发时：只产出生成器预览，不产出最终成片（手动门闩生效）；
+- `RelayVSR 2x`：输出 **1728×960 / 124 帧 / 5.17s**；
+- `潜空间二采 + RelayVSR 2x` + 二采 LoRA（dmad 0.3）：4 步二采后超分，**155.3s** 产出
+  **1728×960 / 124 帧**，最终 mp4 非黑屏（4.87MB），报告含 LoRA/二采/Relay 参数；
+- 生成器预览 mp4 非黑屏（864×480，含 AAC）；
+- 单测 **147 个全绿**（新增 m15 示例校验）。
+
 ## 0.10.0 — 节点内视频预览 + 再次生成按钮 + 合并器手动合并（2026-11-28）
 
 ### 新增

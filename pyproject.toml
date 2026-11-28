@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "director-deck"
-version = "0.10.0"
+version = "0.11.0"
 description = "DirectorDeck - ComfyUI 短剧导演台节点库（链式分段生成 / 素材与音色覆盖 / 二采 / 合并）"
 readme = "README.md"
 requires-python = ">=3.10"

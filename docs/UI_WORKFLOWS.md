@@ -65,6 +65,17 @@
   点合并器节点上的 **🎬 手动合并本片** 按钮才合并一次；改成 `自动` 可恢复旧行为。
   > 旧工作流升级后，跑完各段要手动点一次合并才出成片。
 
+## 二次处理成片（二采 / RelayVSR / 二采 LoRA）
+
+- 在合并器后面接 `DirectorDeck_FinalRefine`（二次处理成片），`bundle` 接模型加载器，
+  `images`/`audio` 接合并器输出；可选接 `segment`（拿 prompt/种子）和 `config`（沿用输出目录）。
+- 处理模式：关闭 / 潜空间二采 / RelayVSR 2x / 潜空间二采 + RelayVSR 2x / Lanczos。
+- 二采参数全在节点上：prompt、seed、denoise、steps、采样器/调度器、**二采 LoRA + 强度**。
+- RelayVSR：模型/Flash VAE 下拉、detail、锁曝光；`free_vram` 在超分前释放 H3。
+- 输出：`output/<output_dir>/final/<prefix>_时间戳.mp4` + 同名 `.json` 报告，节点上直接显示成片预览。
+- **手动触发**：默认 `run_mode=手动`，普通排队不处理；点节点上的 **🎬 生成最终视频** 才执行。
+  > 二采/超分比较吃显存：RelayVSR 约 5GB；1080p 2x 先确认显存。
+
 ## 视频生成器上的预览 / 再次生成
 
 每个生成器节点跑完都会显示本段带音频的 **mp4 预览**；节点上还有 **🔄 再次生成本段** 按钮，

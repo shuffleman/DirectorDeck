@@ -1,6 +1,6 @@
 # DirectorDeck 安装与验证
 
-> 目标：在 ComfyUI（0.46+）里加载 DirectorDeck 的 12 个节点与前端面板，并跑通一条真实链路。
+> 目标：在 ComfyUI（0.46+）里加载 DirectorDeck 的 15 个节点与前端面板，并跑通一条真实链路。
 
 ## 1. 环境要求
 
@@ -19,9 +19,11 @@
 | text_encoders | H3 文本编码器（Qwen3-VL） | `qwen3vl_32b_heretic_minimax_h3_nvfp4.safetensors` |
 | vae | 视频 VAE | `minimax_h3_video_vae_int8_convrot.safetensors` |
 | vae | 音频 VAE | `minimax_h3_audio_vae_fp32.safetensors` |
-| loras（可选） | ref2va / 8 步加速 / 运动修复 | 见 `examples/*.json` 里的默认组合 |
+| loras（可选） | ref2va / 8 步加速 / 运动修复 / 二采精修 | 见 `examples/*.json` 里的默认组合 |
+| diffusion_models（可选） | RelayVSR 2x 放大模型 | `RelayVSR/relayvsr_x2_lightx2v_int8_convrot.safetensors`（约 4.9GB） |
+| vae（可选） | RelayVSR Flash VAE（与模型同为 x2） | `RelayVSR/relayvsr_flash_vae_x2_fp32.safetensors` |
 
-这些名称只是示例：节点面板里选你自己已有的文件即可。
+这些名称只是示例：节点面板里选你自己已有的文件即可。RelayVSR 只在“二次处理成片”节点选择超分时才加载。
 
 ### 可选：本地 TTS（Breeze-TTS-2）
 
@@ -72,9 +74,9 @@ comfy node install director-deck
 
 重启 ComfyUI 后检查：
 
-1. 右键菜单出现 **DirectorDeck** 分类，共 12 个节点：
-   模型加载器 / 全局配置 / 资产管理器 / 剧本加载器 / 段级剧本 / 帧计划器 /
-   视频生成器 / 接缝修正器 / 多段合并器 / 抽卡缓存 / 数字人锁音器 / 二采工具。
+1. 右键菜单出现 **DirectorDeck** 分类，共 15 个节点：
+   模型加载器 / 全局配置 / 资产管理器 / 剧本加载器 / 剧本导入 / 段级剧本 / 帧计划器 /
+   视频生成器 / 接缝修正器 / 多段合并器 / 抽卡缓存 / 数字人锁音器 / TTS 台词表 / 二采工具 / 二次处理成片。
 2. 浏览器右下角出现 **DirectorDeck 导演台** 浮动面板。
 3. 前端 JS 被收录：浏览器打开 `http://127.0.0.1:8188/extensions`，应包含
    `/extensions/DirectorDeck/directordeck.js`。
@@ -83,7 +85,7 @@ comfy node install director-deck
 启动日志里应有：
 
 ```
-[DirectorDeck] v0.2.0 loaded (nodes: 12)
+[DirectorDeck] v0.11.0 loaded (nodes: 15)
 ```
 
 ## 4. 第一次跑通（单段 5 秒）

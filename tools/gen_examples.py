@@ -782,6 +782,50 @@ def m14_unlimited_merge() -> dict:
     return graph
 
 
+def m15_final_refine() -> dict:
+    """M15 二次处理成片：1 段 -> 合并 -> 二采 + RelayVSR（手动触发最终处理）。
+
+    这个示例重点是“节点结构”：真正跑的时候先点合并器的“手动合并”，
+    再点最终处理节点的“生成最终视频”；二采 LoRA / RelayVSR 参数都在节点上。
+    """
+    cfg = config_node()
+    cfg["inputs"]["resolution"] = "480p"
+    cfg["inputs"]["aspect_ratio"] = "16:9 横屏"
+    cut_inputs = {
+        "segment_1": ["10", 0], "images_1": ["10", 1], "audio_1": ["10", 2],
+        "save_manifest": True, "audio_from_source": False, "audio_crossfade_ms": 80,
+        "merge_mode": "手动", "merge_token": 0,
+    }
+    final_inputs = {
+        "bundle": ["1", 0],
+        "images": ["40", 0],
+        "audio": ["40", 1],
+        "mode": "潜空间二采 + RelayVSR 2x",
+        "prompt": "电影感，细节清晰，自然皮肤质感，稳定光影，高质量成片",
+        "seed": 0,
+        "latent_denoise": 0.2, "latent_steps": 4,
+        "latent_sampler": "er_sde", "latent_scheduler": "beta",
+        "refiner_lora": "none", "refiner_lora_strength": 1.0,
+        "relay_model": "RelayVSR\\relayvsr_x2_lightx2v_int8_convrot.safetensors",
+        "relay_vae": "RelayVSR\\relayvsr_flash_vae_x2_fp32.safetensors",
+        "relay_detail": 0.5, "relay_lock_exposure": True,
+        "lanczos_scale": 2.0, "target_width": 0, "target_height": 0,
+        "free_vram": True, "save_video": True,
+        "output_dir": "DirectorDeck", "filename_prefix": "final_m15",
+        "run_mode": "手动", "run_token": 0,
+        "segment": ["10", 0],
+        "config": ["2", 0],
+    }
+    return {
+        "1": loader_node(),
+        "2": cfg,
+        "3": script_node(),
+        "10": take_node("10", "1", "2", "3"),
+        "40": {"class_type": "DirectorDeck_FinalCut", "inputs": cut_inputs},
+        "50": {"class_type": "DirectorDeck_FinalRefine", "inputs": final_inputs},
+    }
+
+
 def main() -> int:
     os.makedirs(EXAMPLE_DIR, exist_ok=True)
     for name, graph in (("m1_single_segment_api", single()),
@@ -798,7 +842,8 @@ def main() -> int:
                         ("m10_tts_auto_api", m10_tts_auto()),
                         ("m11_tts_chain_api", m11_tts_chain()),
                         ("m13_import_api", m13_import_chain()),
-                        ("m14_unlimited_merge_api", m14_unlimited_merge())):
+                        ("m14_unlimited_merge_api", m14_unlimited_merge()),
+                        ("m15_final_refine_api", m15_final_refine())):
         # 合并器默认手动合并：示例里显式写出来，避免用户以为跑完会自动出片。
         for node in graph.values():
             if node.get("class_type") == "DirectorDeck_FinalCut":

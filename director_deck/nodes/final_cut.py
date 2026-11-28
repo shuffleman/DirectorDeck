@@ -133,12 +133,20 @@ class DirectorDeckFinalCut:
             if ExecutionBlocker is None:
                 raise RuntimeError("手动合并需要 ComfyUI 的 ExecutionBlocker，请重启 ComfyUI")
             last = _MERGE_TOKENS.get(uid)
-            if last is None or token <= last:
-                _MERGE_TOKENS.setdefault(uid, token)
-                print("[DirectorDeck] 合并器=手动：等待点击节点上的“手动合并”（本次跳过合并）")
+            if last is None:
+                # 首次见到节点：token=0 视为普通运行（跳过）；
+                # token>0 说明是“手动合并”按钮刚点过，直接执行（首次点击不吞）。
+                _MERGE_TOKENS[uid] = token
+                if token <= 0:
+                    print("[DirectorDeck] 合并器=手动：等待点击节点上的“手动合并”（本次跳过合并）")
+                    return (ExecutionBlocker(None), ExecutionBlocker(None),
+                            ExecutionBlocker(None))
+            elif token <= last:
+                print("[DirectorDeck] 合并器=手动：token 未变化，跳过")
                 return (ExecutionBlocker(None), ExecutionBlocker(None),
                         ExecutionBlocker(None))
-            _MERGE_TOKENS[uid] = token
+            else:
+                _MERGE_TOKENS[uid] = token
 
         pieces_images = []
         pieces_audio = []

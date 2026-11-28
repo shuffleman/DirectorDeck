@@ -11,6 +11,7 @@ from .brief import DirectorDeckSegmentBrief
 from .cache import DirectorDeckSegmentCache
 from .config import DirectorDeckConfig
 from .final_cut import DirectorDeckFinalCut
+from .final_refine import DirectorDeckFinalRefine
 from .loader import DirectorDeckModelLoader
 from .planner import DirectorDeckFramePlanner
 from .refiner import DirectorDeckRefiner
@@ -37,6 +38,7 @@ NODE_CLASS_MAPPINGS = {
     "DirectorDeck_VoiceLock": DirectorDeckVoiceLock,
     "DirectorDeck_TTSBooth": DirectorDeckTTSBooth,
     "DirectorDeck_Refiner": DirectorDeckRefiner,
+    "DirectorDeck_FinalRefine": DirectorDeckFinalRefine,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -54,6 +56,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "DirectorDeck_VoiceLock": "DirectorDeck · 数字人锁音器",
     "DirectorDeck_TTSBooth": "DirectorDeck · TTS 台词表（多角色配音）",
     "DirectorDeck_Refiner": "DirectorDeck · 二采工具",
+    "DirectorDeck_FinalRefine": "DirectorDeck · 二次处理成片（二采/RelayVSR）",
 }
 
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]

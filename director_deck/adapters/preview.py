@@ -36,7 +36,7 @@ def _write_wav(path: str, waveform, sample_rate: int) -> None:
 
 
 def write_preview_mp4(images, audio: dict | None, out_path: str, *,
-                      fps: int = 24, crf: int = 23) -> str:
+                      fps: int = 24, crf: int = 23, preset: str = "veryfast") -> str:
     """把帧张量 + 音轨写成 mp4；返回 out_path。失败抛异常由调用方兜底。"""
     import imageio_ffmpeg
 
@@ -60,13 +60,15 @@ def write_preview_mp4(images, audio: dict | None, out_path: str, *,
         os.close(handle)
         _write_wav(wav_path, waveform, int((audio or {}).get("sample_rate", 48000)))
         cmd += ["-i", wav_path, "-c:a", "aac", "-b:a", "128k", "-shortest"]
-    cmd += ["-c:v", "libx264", "-preset", "veryfast", "-crf", str(int(crf)),
+    cmd += ["-c:v", "libx264", "-preset", str(preset), "-crf", str(int(crf)),
             "-pix_fmt", "yuv420p", "-movflags", "+faststart", out_path]
 
     process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
     try:
         for frame in frames:
-            process.stdin.write(np.clip(frame, 0.0, 1.0).astype(np.uint8).tobytes())
+            # 注意：浮点 0~1 必须乘 255 再转 uint8，否则会变成 0/1 的“黑片”。
+            process.stdin.write(
+                (np.clip(frame, 0.0, 1.0) * 255.0).astype(np.uint8).tobytes())
         process.stdin.close()
         stderr = process.stderr.read()
         code = process.wait()

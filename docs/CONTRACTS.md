@@ -359,6 +359,7 @@ segment_fingerprint = "sha1:" + sha1(canonical_json({
 | 15 | `DirectorDeck_PromptSmith`（可选） | STRING | template/task、remote provider（默认关） |
 | 16 | `DirectorDeck_DirectorRunner`（M4，可选） | ALL | plan/config、run_mode |
 | 18 | `DirectorDeck_ScriptImport`（0.8.0） | SCRIPT + STRING×3 + INT | script（外部剧本文本）、format（自动识别/DirectorDeck/JSON/H3 V6）、segment_seconds、match_assets、match_scenes、min_score + optional: assets(DIRECTOR_ASSETS)、cast(DIRECTOR_CAST)；输出 script/script_text/mapping/summary/segment_count；解析失败报 `DD-E061` |
+| 19 | `DirectorDeck_FinalRefine`（0.11.0） | IMAGE + AUDIO + STRING | bundle、images、audio、mode（关闭/潜空间二采/RelayVSR 2x/二采+RelayVSR/Lanczos）、prompt、seed、latent_denoise、latent_steps、latent_sampler、latent_scheduler、refiner_lora、refiner_lora_strength、relay_model、relay_vae、relay_detail、relay_lock_exposure、lanczos_scale、target_width/height、free_vram、save_video、output_dir、filename_prefix、run_mode(手动/自动)、run_token + optional: segment、config；输出 images/audio/report，并直接保存 mp4 + 同名 json |
 
 参数顺序规则：**只追加**；`*_policy` 放在对应输入旁；旧 ID 提供别名。
 

@@ -42,6 +42,7 @@ ComfyUI 节点库：**AI 短剧导演台**。把「模型 + 素材 + 剧本 + �
 | `DirectorDeck_TTSBooth` | TTS 台词表：一张台词表 → 多角色配音 + 可锁音 CAST（可选依赖 Breeze-TTS-2） |
 | `DirectorDeck_ScriptImport` | 剧本导入：外部剧本（文本/JSON/H3 V6）→ 自动匹配角色/场景/音频 → 可生成剧本 |
 | `DirectorDeck_Refiner` | 二采工具：低 denoise 再采样（音频锁定）或 lanczos 放大 |
+| `DirectorDeck_FinalRefine` | **二次处理成片**：潜空间二采（可叠二采 LoRA）/ RelayVSR 2x / Lanczos；手动点“🎬 生成最终视频”，直接保存最终 mp4（保留原音轨）+ 节点预览 |
 
 ## 快速开始
 
@@ -134,6 +135,29 @@ ComfyUI 节点库：**AI 短剧导演台**。把「模型 + 素材 + 剧本 + �
   点合并器节点上的 **🎬 手动合并本片** 按钮才会真正合并一次（按钮把 `merge_token` +1，后端只在 token 变化时合并）。
   想恢复“每次排队都自动合并”，把 `merge_mode` 改成 `自动` 即可。
   > 升级旧工作流后这是预期行为：先点“再次生成”预览各段，满意后再点“手动合并本片”。
+
+### 7. 二次处理成片（二采 / RelayVSR / 二采 LoRA）
+
+合并完成后接 **`DirectorDeck_FinalRefine`（二次处理成片）**，节点会直接保存最终视频，不需要再连 SaveVideo：
+
+- **接法**：`bundle`（模型组合）+ `images`/`audio`（接合并器输出）；可选接 `segment`（拿 prompt/种子）和 `config`（沿用输出目录）。
+- **处理模式**：
+  - `关闭（只重新封装）`：不处理，只按目标尺寸重存；
+  - `潜空间二采`：把成片重新编码回 H3 AV latent，低 denoise 再采一次（音频锁死，输出仍用原音轨）；
+  - `RelayVSR 2x`：用 RelayVSR 模型 + Flash VAE 做 2x 超分（音频原样保留）；
+  - `潜空间二采 + RelayVSR 2x`：先二采再超分；
+  - `Lanczos 放大`：纯图像放大（快，不过模型）。
+- **二采细节**：`prompt`、`seed`、`latent_denoise`、`latent_steps`、采样器/调度器都可调；
+  `refiner_lora` + `refiner_lora_strength` 只作用于二采（不动一采模型）。
+- **RelayVSR 细节**：模型/Flash VAE 下拉（默认 x2 lightx2v）、`relay_detail` 解码细节、`relay_lock_exposure` 锁原片曝光；
+  `free_vram=True` 会在超分前卸掉 H3 模型，降低显存峰值。
+- **输出细节**：`target_width/height` 可强制最终分辨率（0=保持，须 32 倍数）；`save_video` 保存到
+  `output/<output_dir>/final/<filename_prefix>_时间戳.mp4`，旁边写一份同名 `.json` 报告；节点上直接显示最终视频预览。
+- **手动触发**：默认 `run_mode=手动`，普通排队只跑上游、不会处理成片；点节点上的 **🎬 生成最终视频** 按钮才执行
+  （`run_mode=自动` 可恢复每次排队都处理）。
+  > RelayVSR 模型约 5GB 显存；1080p 2x 请确认显存够，跑不动就把 `free_vram` 打开或先只跑二采。
+
+> RelayVSR 模型放在 `models/diffusion_models/RelayVSR/`，Flash VAE 放在 `models/vae/RelayVSR/`（本机已装 x2 一套）。
 
 ### 6. 外部剧本导入 + 一键建生成器
 
